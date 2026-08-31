@@ -5,7 +5,7 @@ files synchronized and audited on 2026-09-01. The authoring DOCX files are not
 deposited; the hashes identify the exact versions used for this release:
 
 - `Main.docx`: SHA-256 `3b10973295ac8cb0a48581575d6230379bde1c858bad7956b94f2409d47de801`
-- `SI.docx`: SHA-256 `5fcd5b3edbd93beebdca2856e7be1167f680f1c5863357b2419a52fdab4b5101`
+- `SI.docx`: SHA-256 `6a2117b36d6628cae5fa7081914432f829f06a3a71e9f9cfbf9a04628ee8cafe`
 
 The manuscript version mapped for this release has Figures 1–6 and no numbered
 tables. Its SI has Texts S1–S4, Fig. S1, and Tables S1–S21. Run
