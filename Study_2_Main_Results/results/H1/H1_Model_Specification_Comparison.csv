@@ -1,0 +1,5 @@
+"Model","Analysis_Unit","Formula","Observations","Participants","NumDF","DenDF","F","P","Singular","Diagnostic"
+"Registered participant intercept","Three task-level scores per participant x stage","Value ~ Phase * Label + (1 | ID)",1575,175,4,1394.00000072006,2.68467529641748,0.0300845809183579,FALSE,""
+"Registered participant-specific Stage slope","Three task-level scores per participant x stage","Value ~ Phase * Label + (1 + Phase | ID)",1575,175,4,273.481981373518,2.2767082886172,0.0613223597423299,TRUE,"Model failed to converge with 1 negative eigenvalue: -4.3e+01 | boundary (singular) fit: see help('isSingular')"
+"Expanded task-structured sensitivity","Three task-level scores per participant x stage","Value ~ Phase * Label + (1 | ID) + (1 | Task) + (1 | ID:Task)",1575,175,4,1043.99536345583,3.64000382908084,0.0059282101566707,FALSE,""
+"Overall 17-item aggregation sensitivity","One overall 17-item score per participant x stage","Value ~ Phase * Label + (1 | ID)",525,175,4,344.000000736833,2.68929301805112,0.0311432560670723,FALSE,""

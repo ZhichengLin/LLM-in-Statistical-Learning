@@ -1,0 +1,504 @@
+---
+title: "Figure 3"
+author: "Siyuan Huang"
+date: "2026-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(42)
+```
+
+## Load libraries
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(lemon)
+library(patchwork)
+library(lmerTest)
+library(emmeans)
+```
+
+## House-style constants
+
+```{r house-style}
+# PNAS final-size preview: this figure is exported directly at its intended
+# 7-inch publication width. Physical dimensions that were defined for the
+# previous 2x artwork are therefore expressed at final size here.
+FONT_FAMILY    <- "Helvetica"
+FONT_SIZE_PT   <- 7
+FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
+TAG_SIZE_PT    <- 7.5
+# Direct data labels remain slightly smaller than interface text so all 15
+# models remain identifiable without covering their shared coordinates.
+MODEL_LABEL_SIZE_PT   <- 6.5
+MODEL_LABEL_SIZE_GEOM <- MODEL_LABEL_SIZE_PT / .pt
+LEGEND_SIZE_PT <- FONT_SIZE_PT
+# Standardized final physical stroke hierarchy for coded Figures 3-7.
+# ggplot2's linewidth unit is approximately 0.75 mm, not one typographic point.
+GG_LINE_UNIT_PT  <- 0.75 * 72.27 / 25.4
+pt_to_ggline     <- function(x) x / GG_LINE_UNIT_PT
+SECONDARY_LINE_PT <- 0.25
+AXIS_LINE_PT      <- 0.50
+PRIMARY_LINE_PT   <- 0.75
+LINE_SIZE       <- pt_to_ggline(SECONDARY_LINE_PT)
+AXIS_LINE_SIZE  <- pt_to_ggline(AXIS_LINE_PT)
+TICK_LENGTH_PT <- 2.5
+POINT_SIZE     <- 1.6
+# ggplot2 point borders use a separate stroke scale; 0.53 renders at about
+# 0.75 pt in the Cairo PDF device used below.
+POINT_STROKE   <- 0.53
+CONNECTOR_SIZE <- pt_to_ggline(SECONDARY_LINE_PT)
+THINKING_ROW_FILL <- "#F2F2F2"
+FIGURE_WIDTH_IN  <- 7
+FIGURE_HEIGHT_IN <- 3.5
+
+ACCURACY_A_LIMITS <- c(0.75, 1.01)
+ACCURACY_A_BREAKS <- seq(0.75, 1.00, 0.05)
+STABILITY_LIMITS  <- c(0, 0.08)
+STABILITY_BREAKS  <- seq(0, 0.08, 0.02)
+ACCURACY_B_LIMITS <- c(0.35, 1.05)
+ACCURACY_B_BREAKS <- seq(0.40, 1.00, 0.15)
+
+theme_figure3 <- function() {
+  theme_classic(base_family = FONT_FAMILY, base_size = FONT_SIZE_PT) +
+    theme(
+      text = element_text(family = FONT_FAMILY, size = FONT_SIZE_PT),
+      axis.line = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks.length = grid::unit(TICK_LENGTH_PT, "pt"),
+      axis.text = element_text(colour = "black", size = FONT_SIZE_PT),
+      axis.title = element_text(colour = "black", size = FONT_SIZE_PT),
+      legend.title = element_text(size = LEGEND_SIZE_PT),
+      legend.text = element_text(size = LEGEND_SIZE_PT),
+      legend.key = element_blank(),
+      legend.key.width = grid::unit(5, "pt"),
+      legend.key.height = grid::unit(8, "pt"),
+      legend.background = element_blank(),
+      legend.spacing.x = grid::unit(1, "pt"),
+      legend.margin = margin(0, 0, 0, 0),
+      plot.tag = element_text(size = FONT_SIZE_PT, face = "bold")
+    )
+}
+```
+
+## Import data
+
+```{r import-data, message=FALSE, warning=FALSE}
+df <- read_excel("data/Study_1_Objective_Data.xlsx") %>%
+  mutate(model = as.character(model))
+```
+
+## Model metadata
+
+```{r model-metadata}
+model_info <- tibble(
+  model = c(
+    "o1", "gpt-4o", "V3", "R1", "2.5", "2.5 Pro(experimental)",
+    "Extended 3.7 Sonnet", "Grok 3 Think", "gpt-4.5", "3.7 Sonnet",
+    "gpt-o4-mini", "gpt-o3", "gpt-o4-mini-high", "Grok 3", "2.0 Flash"
+  ),
+  provider = c(
+    "OpenAI", "OpenAI", "DeepSeek", "DeepSeek", "Alibaba", "Google",
+    "Anthropic", "xAI", "OpenAI", "Anthropic",
+    "OpenAI", "OpenAI", "OpenAI", "xAI", "Google"
+  ),
+  mode = c(
+    "Thinking", "Standard", "Standard", "Thinking", "Standard", "Thinking",
+    "Thinking", "Thinking", "Standard", "Standard",
+    "Thinking", "Thinking", "Thinking", "Standard", "Standard"
+  ),
+  display_name = c(
+    "OpenAI o1", "GPT-4o", "DeepSeek-V3", "DeepSeek-R1", "Qwen 2.5",
+    "Gemini 2.5 Pro", "Claude 3.7 Sonnet (Extended)", "Grok 3 Think",
+    "GPT-4.5", "Claude 3.7 Sonnet", "OpenAI o4-mini", "OpenAI o3",
+    "OpenAI o4-mini-high", "Grok 3", "Gemini 2.0 Flash"
+  ),
+  short_name = c(
+    "o1", "GPT-4o", "DS-V3", "DS-R1", "Qwen 2.5",
+    "Gemini 2.5 Pro", "Claude 3.7 Ext.", "Grok 3 Think",
+    "GPT-4.5", "Claude 3.7", "o4-mini", "o3",
+    "o4-mini-high", "Grok 3", "Gemini 2.0 Flash"
+  )
+)
+```
+
+## Model-level summary statistics
+
+```{r model-level-summary-statistics, message=FALSE, warning=FALSE}
+items_per_task <- df %>%
+  filter(accuracy_rate > 0) %>%
+  mutate(task_items = round(sum_score / accuracy_rate)) %>%
+  distinct(question, task_items)
+
+stability_within <- df %>%
+  group_by(model, question) %>%
+  summarise(task_sd = sd(accuracy_rate), .groups = "drop") %>%
+  group_by(model) %>%
+  summarise(stability_sd = mean(task_sd), .groups = "drop")
+
+model_summary <- df %>%
+  left_join(items_per_task, by = "question") %>%
+  group_by(model) %>%
+  summarise(
+    accuracy = sum(sum_score) / sum(task_items),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  left_join(stability_within, by = "model") %>%
+  left_join(model_info, by = "model") %>%
+  arrange(desc(accuracy), stability_sd) %>%
+  mutate(mode = factor(mode, levels = c("Standard", "Thinking")))
+
+model_order <- model_summary$display_name
+```
+
+## Thinking-mode contrast used in panel b
+
+```{r thinking-mode-contrast, message=FALSE, warning=FALSE}
+# Reproduce the primary thinking-mode accuracy contrast from the Study 1
+# objective-analysis notebook. Keeping the calculation here prevents the
+# displayed P value from drifting away from the data or model specification.
+thinking_model <- c("claude", "Grok", "deepseek", "gemini", "chatgpt")
+
+thinking_accuracy <- df %>%
+  mutate(
+    Thinking_Model = factor(Thinking_Model, levels = c("1", "0")),
+    software = factor(software),
+    question = factor(question),
+    model = factor(model)
+  ) %>%
+  filter(software %in% thinking_model) %>%
+  group_by(model, question, Thinking_Model, software) %>%
+  summarise(
+    Prop_Correct = mean(accuracy_rate),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Prop_Correct_adj = pmin(pmax(Prop_Correct, 1e-5), 1 - 1e-5),
+    Logit_Prop = qlogis(Prop_Correct_adj)
+  )
+
+thinking_accuracy_model <- lmer(
+  Logit_Prop ~ Thinking_Model * question + software + (1 | model),
+  data = thinking_accuracy
+)
+
+thinking_contrast <- as.data.frame(
+  pairs(emmeans(thinking_accuracy_model, ~ Thinking_Model))
+)
+
+if (nrow(thinking_contrast) != 1 || !is.finite(thinking_contrast$p.value[1])) {
+  stop("Could not recover the unique thinking-versus-standard P value.")
+}
+
+thinking_p_label <- sprintf(
+  "plain('Thinking vs. standard:')~italic(P)~'='~plain('%s')",
+  sub("^0", "", sprintf("%.3f", thinking_contrast$p.value[1]))
+)
+```
+
+## Task-level data
+
+```{r task-level-data}
+task_summary <- df %>%
+  left_join(model_info, by = "model") %>%
+  mutate(
+    task = case_when(
+      question == "Q1" ~ "P-value",
+      question == "Q2" ~ "95% CI",
+      question == "Q3" ~ "Study comparison"
+    ),
+    task = factor(task, levels = c("P-value", "95% CI", "Study comparison"))
+  ) %>%
+  group_by(display_name, provider, mode, task) %>%
+  summarise(accuracy = mean(accuracy_rate), .groups = "drop") %>%
+  mutate(display_name = factor(display_name, levels = rev(model_order)))
+
+thinking_rows <- task_summary %>%
+  distinct(display_name, mode) %>%
+  filter(mode == "Thinking") %>%
+  mutate(
+    row = as.numeric(display_name),
+    ymin = row - 0.40,
+    ymax = row + 0.40
+  )
+
+top_row <- length(levels(task_summary$display_name))
+```
+
+## Palette
+
+```{r palette}
+provider_colors <- c(
+  "OpenAI" = "#0072B2",
+  "Google" = "#D55E00",
+  "Anthropic" = "#009E73",
+  "DeepSeek" = "#CC79A7",
+  "xAI" = "#E69F00",
+  "Alibaba" = "#56B4E9"
+)
+```
+
+## Panel a: Accuracy and stability
+
+```{r panel-a, message=FALSE, warning=FALSE}
+zero_label_layout <- tribble(
+  ~display_name,         ~label_x, ~label_y, ~label_hjust, ~use_leader,
+  "Gemini 2.0 Flash",      0.7695,   0.0025,          0,       FALSE,
+  "Qwen 2.5",               0.932,    0.005,          1,        TRUE,
+  "Gemini 2.5 Pro",         0.932,    0.012,          1,        TRUE,
+  "DeepSeek-R1",            0.950,    0.005,          0,        TRUE,
+  "DeepSeek-V3",            0.950,    0.012,          0,        TRUE,
+  "OpenAI o1",              0.992,    0.009,          1,        TRUE,
+  "GPT-4o",                 0.992,    0.017,          1,        TRUE
+)
+
+zero_labels <- model_summary %>%
+  filter(stability_sd == 0) %>%
+  left_join(zero_label_layout, by = "display_name")
+
+manual_variable_label_layout <- tribble(
+  ~display_name,                    ~label_x, ~label_y, ~label_hjust,
+  "OpenAI o4-mini",                   0.8215,   0.0715,          0,
+  "Claude 3.7 Sonnet (Extended)",      0.9410,   0.0665,        0.5,
+  "Grok 3",                            0.7790,   0.0195,          0,
+  "GPT-4.5",                           0.8530,   0.0390,        0.5,
+  "Claude 3.7 Sonnet",                 0.8430,   0.0320,        0.5,
+  "OpenAI o3",                         0.8160,   0.0770,          0,
+  "Grok 3 Think",                      0.9060,   0.0535,        0.5
+)
+
+manual_variable_labels <- model_summary %>%
+  inner_join(manual_variable_label_layout, by = "display_name")
+
+o4_mini_high_label <- model_summary %>%
+  filter(display_name == "OpenAI o4-mini-high") %>%
+  mutate(label_x = 0.801, label_y = stability_sd, label_hjust = 1)
+
+panel_a <- ggplot(
+  model_summary,
+  aes(x = accuracy, y = stability_sd, colour = provider, shape = mode)
+) +
+  geom_point(size = POINT_SIZE, stroke = POINT_STROKE) +
+  geom_segment(
+    data = zero_labels %>% filter(use_leader),
+    aes(x = accuracy, y = stability_sd, xend = label_x, yend = label_y),
+    inherit.aes = FALSE,
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_text(
+    data = zero_labels,
+    aes(x = label_x, y = label_y, label = short_name, hjust = label_hjust),
+    inherit.aes = FALSE,
+    colour = "black",
+    family = FONT_FAMILY,
+    size = MODEL_LABEL_SIZE_GEOM
+  ) +
+  geom_text(
+    data = o4_mini_high_label,
+    aes(x = label_x, y = label_y, label = short_name, hjust = label_hjust),
+    inherit.aes = FALSE,
+    colour = "black",
+    family = FONT_FAMILY,
+    size = MODEL_LABEL_SIZE_GEOM
+  ) +
+  geom_text(
+    data = manual_variable_labels,
+    aes(x = label_x, y = label_y, label = short_name, hjust = label_hjust),
+    inherit.aes = FALSE,
+    colour = "black",
+    family = FONT_FAMILY,
+    size = MODEL_LABEL_SIZE_GEOM
+  ) +
+  scale_colour_manual(values = provider_colors) +
+  scale_shape_manual(values = c("Standard" = 1, "Thinking" = 17)) +
+  scale_x_continuous(
+    limits = ACCURACY_A_LIMITS,
+    breaks = ACCURACY_A_BREAKS,
+    labels = scales::label_percent(accuracy = 1),
+    expand = expansion(mult = c(0.02, 0.03))
+  ) +
+  scale_y_continuous(
+    limits = STABILITY_LIMITS,
+    breaks = STABILITY_BREAKS,
+    labels = scales::label_number(accuracy = 0.01),
+    expand = expansion(mult = c(0.09, 0.04))
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    x = "Accuracy",
+    y = "Mean within-task SD",
+    colour = "Provider",
+    shape = "Mode"
+  ) +
+  guides(
+    colour = guide_legend(
+      order = 1,
+      nrow = 2,
+      byrow = TRUE,
+      title.position = "top",
+      title.hjust = 0.5
+    ),
+    shape = guide_legend(
+      order = 2,
+      nrow = 2,
+      byrow = TRUE,
+      title.position = "top",
+      title.hjust = 0.5
+    )
+  ) +
+  theme_figure3() +
+  theme(
+    plot.margin = margin(5, -6, 4, 5),
+    legend.position = "bottom",
+    legend.justification = "left",
+    legend.box = "horizontal",
+    legend.box.just = "left",
+    legend.direction = "horizontal",
+    legend.spacing.x = grid::unit(20, "pt")
+  )
+
+```
+
+## Panel b: Task-level accuracy
+
+```{r panel-b, message=FALSE, warning=FALSE}
+panel_b <- ggplot(
+  task_summary,
+  aes(x = accuracy, y = display_name, shape = task, fill = task)
+) +
+  geom_rect(
+    data = thinking_rows,
+    aes(xmin = -Inf, xmax = Inf, ymin = ymin, ymax = ymax),
+    inherit.aes = FALSE,
+    fill = THINKING_ROW_FILL,
+    colour = NA
+  ) +
+  geom_line(
+    aes(group = display_name),
+    colour = "grey72",
+    linewidth = CONNECTOR_SIZE
+  ) +
+  geom_point(
+    size = POINT_SIZE,
+    stroke = POINT_STROKE,
+    colour = "black"
+  ) +
+  annotate(
+    "text",
+    x = 0.375,
+    y = top_row - 1,
+    label = "Shaded rows indicate thinking mode",
+    hjust = 0,
+    vjust = 0.5,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM
+  ) +
+  annotate(
+    "text",
+    x = mean(ACCURACY_B_LIMITS),
+    y = top_row + 0.24,
+    label = thinking_p_label,
+    parse = TRUE,
+    hjust = 0.5,
+    vjust = 0.5,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM
+  ) +
+  scale_shape_manual(
+    values = c("P-value" = 24, "95% CI" = 22, "Study comparison" = 21)
+  ) +
+  scale_fill_manual(
+    values = c(
+      "P-value" = "white",
+      "95% CI" = "grey80",
+      "Study comparison" = "white"
+    )
+  ) +
+  scale_x_continuous(
+    limits = ACCURACY_B_LIMITS,
+    breaks = ACCURACY_B_BREAKS,
+    labels = scales::label_percent(accuracy = 1),
+    expand = expansion(mult = c(0.01, 0.03))
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(x = "Accuracy", y = NULL, shape = "Task", fill = "Task") +
+  guides(
+    shape = guide_legend(
+      order = 3,
+      nrow = 1,
+      byrow = TRUE,
+      title.position = "top",
+      title.hjust = 0.5,
+      override.aes = list(fill = c("white", "grey80", "white"))
+    ),
+    fill = "none"
+  ) +
+  theme_figure3() +
+  theme(
+    plot.margin = margin(5, 5, 4, -6),
+    legend.position = "bottom",
+    legend.justification = "center",
+    legend.box = "horizontal",
+    legend.box.just = "center",
+    legend.direction = "horizontal"
+  )
+
+```
+
+## Combine and export
+
+```{r combine-and-export, message=FALSE, warning=FALSE}
+combined_figure <- panel_a + panel_b +
+  plot_layout(widths = c(1.15, 1)) +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    plot.tag = element_text(
+      size = TAG_SIZE_PT,
+      face = "bold",
+      hjust = 0,
+      vjust = 0
+    ),
+    plot.tag.position = c(0.005, 0.98)
+  )
+
+combined_figure
+
+ggsave(
+  "figure/Figure_Study1_1.pdf",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  device = cairo_pdf,
+  family = FONT_FAMILY,
+  symbolfamily = FONT_FAMILY,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study1_1.png",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  dpi = 300,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study1_1.svg",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  bg = "white"
+)
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```

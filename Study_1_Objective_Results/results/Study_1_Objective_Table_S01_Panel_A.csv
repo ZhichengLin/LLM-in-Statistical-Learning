@@ -1,0 +1,16 @@
+Rank,Platform,Model,Mode,P_Value,CI_95,Study_Comparison,Overall_Accuracy,Run_to_Run_SD,Used in Study 2
+1,OpenAI,GPT-4o,Standard,1.00 (0.00),1.00 (0.00),1.00 (0.00),1.00,0.00,Top
+2,OpenAI,OpenAI o1,Thinking,1.00 (0.00),1.00 (0.00),1.00 (0.00),1.00,0.00,Top
+3,Alibaba,Qwen 2.5,Standard,1.00 (0.00),0.80 (0.00),1.00 (0.00),0.94,0.00,
+4,Anthropic,Claude 3.7 Sonnet (Extended),Thinking,1.00 (0.00),0.80 (0.19),1.00 (0.00),0.94,0.06,
+5,DeepSeek,DeepSeek-R1,Thinking,1.00 (0.00),0.80 (0.00),1.00 (0.00),0.94,0.00,
+6,DeepSeek,DeepSeek-V3,Standard,1.00 (0.00),0.80 (0.00),1.00 (0.00),0.94,0.00,
+7,Google,Gemini 2.5 Pro,Thinking,1.00 (0.00),0.80 (0.00),1.00 (0.00),0.94,0.00,
+8,xAI,Grok 3 Think,Thinking,0.92 (0.09),0.78 (0.06),1.00 (0.00),0.91,0.05,
+9,OpenAI,GPT-4.5,Standard,1.00 (0.00),0.50 (0.11),1.00 (0.00),0.85,0.04,
+10,Anthropic,Claude 3.7 Sonnet,Standard,1.00 (0.00),0.44 (0.08),1.00 (0.00),0.84,0.03,
+11,OpenAI,OpenAI o4-mini,Thinking,0.95 (0.08),0.64 (0.13),0.83 (0.00),0.82,0.07,
+12,OpenAI,OpenAI o3,Thinking,0.92 (0.09),0.66 (0.13),0.83 (0.00),0.81,0.07,
+13,OpenAI,OpenAI o4-mini-high,Thinking,0.92 (0.09),0.64 (0.13),0.83 (0.00),0.81,0.07,
+14,xAI,Grok 3,Standard,0.67 (0.00),0.62 (0.06),1.00 (0.00),0.77,0.02,Bottom
+15,Google,Gemini 2.0 Flash,Standard,0.67 (0.00),0.60 (0.00),1.00 (0.00),0.76,0.00,Bottom

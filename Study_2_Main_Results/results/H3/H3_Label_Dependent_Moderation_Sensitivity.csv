@@ -1,0 +1,7 @@
+"Outcome","Model","Singular","NumDF","DenDF","F_value","p_value"
+"Confidence","Full random-intercept structure",TRUE,4,1386.00062707553,4.7078052994475,0.000892837122634323
+"Confidence","Zero-variance ID-by-Task intercept removed",FALSE,4,1386.00007604433,4.70780178751982,0.000892842734504535
+"Perceived usefulness","Full random-intercept structure",TRUE,2,866.999975702914,5.74384445336471,0.00332553568058171
+"Perceived usefulness","Zero-variance ID-by-Task intercept removed",FALSE,2,866.999692652618,5.74384078937182,0.00332554774660135
+"Willingness","Full random-intercept structure",TRUE,2,866.99969793626,6.46437684343472,0.00163411793064061
+"Willingness","Zero-variance ID-by-Task intercept removed",FALSE,2,866.99966548321,6.46437640668572,0.00163411863674431

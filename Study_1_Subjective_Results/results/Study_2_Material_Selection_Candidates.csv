@@ -1,0 +1,19 @@
+Task,Model,Iteration,Instructor,Student,Objective_Rank,Model_Task_Accuracy
+P-value,GPT-4o,1,5.625,5.6875,1,1
+P-value,GPT-4o,2,5.875,5.9375,1,1
+P-value,GPT-4o,3,5.5625,5.9375,1,1
+P-value,OpenAI o1,1,5.3125,5.75,2,1
+P-value,OpenAI o1,2,5.25,5.375,2,1
+P-value,OpenAI o1,3,5.1875,5.6875,2,1
+95% confidence interval,GPT-4o,1,5.375,5.375,1,1
+95% confidence interval,GPT-4o,2,5.1875,4.875,1,1
+95% confidence interval,GPT-4o,3,5.125,5.375,1,1
+95% confidence interval,OpenAI o1,1,5.5,5.5,2,1
+95% confidence interval,OpenAI o1,2,5.5625,5.3125,2,1
+95% confidence interval,OpenAI o1,3,5.9375,4.5625,2,1
+Study comparison,GPT-4o,1,5.0625,5.75,1,1
+Study comparison,GPT-4o,2,5.4375,6.1875,1,1
+Study comparison,GPT-4o,3,5.4375,5.375,1,1
+Study comparison,OpenAI o1,1,4.75,5,2,1
+Study comparison,OpenAI o1,2,5.25,5.1875,2,1
+Study comparison,OpenAI o1,3,5.0625,5.0625,2,1

@@ -1,0 +1,764 @@
+---
+title: "Figure S1"
+author: "Siyuan Huang"
+date: "2026-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+set.seed(42)
+```
+
+## Load libraries
+```{r load-libraries-1, message = F, warning = F}
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(cowplot)
+library(ggplot2)
+library(lemon)
+library(Rmisc)
+library(patchwork)
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(forcats)
+
+FONT_FAMILY    <- "Helvetica"
+FONT_SIZE_PT   <- 7
+FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
+TAG_SIZE_PT    <- 7.5
+GG_LINE_UNIT_PT  <- 0.75 * 72.27 / 25.4
+pt_to_ggline     <- function(x) x / GG_LINE_UNIT_PT
+SECONDARY_LINE_PT <- 0.25
+AXIS_LINE_PT      <- 0.50
+PRIMARY_LINE_PT   <- 0.75
+LINE_SIZE       <- pt_to_ggline(SECONDARY_LINE_PT)
+ERROR_LINE_SIZE <- pt_to_ggline(AXIS_LINE_PT)
+AXIS_LINE_SIZE  <- pt_to_ggline(AXIS_LINE_PT)
+DATA_LINE_SIZE  <- pt_to_ggline(PRIMARY_LINE_PT)
+TICK_LENGTH_PT <- 2.5
+POINT_SIZE     <- 2
+POINT_STROKE   <- 0.53
+FIGURE_WIDTH_IN  <- 7
+FIGURE_HEIGHT_IN <- 4
+```
+
+## Font and theme settings
+```{r font-and-theme-settings-1, message = F, warning = F}
+theme_set(theme_classic(base_family = FONT_FAMILY))
+```
+
+## Load utilities and import data
+```{r load-utilities-and-import-data-1, message = F, warning = F}
+source("plot_util_test.R")
+
+data_raw <- read_excel(
+  "../Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx"
+)
+
+data_filtered <- data_raw[data_raw$stage1_task0_accuracy < 0.9, ]
+```
+
+## MAR model setup (used for panels a–d EMMs)
+```{r mar-model-setup-used-for-fig3a-1, message = F, warning = F}
+data_mar <- data_filtered %>%
+  dplyr::mutate(
+    Used_LLM_Hours = fct_collapse(
+      as.character(Used_LLM_Hours),
+      None = "0",
+      Low  = c("1–5", "6–10"),
+      High = c("11–20", ">20")
+    ),
+    Label = factor(Label, levels = c("AI", "AI Human", "Human")),
+    ID = as.factor(ID)
+  )
+
+format_p <- function(p) {
+  if (is.na(p)) {
+    "italic(P)~'= NA'"
+  } else if (p < .001) {
+    "italic(P)~'< 0.001'"
+  } else {
+    sprintf("italic(P)~'= %s'", sprintf("%.3f", p))
+  }
+}
+
+extract_unique_p <- function(path, sheet, measure, contrast) {
+  value <- read_excel(path, sheet = sheet) %>%
+    filter(
+      .data$Measure == .env$measure,
+      .data$contrast == .env$contrast
+    ) %>%
+    pull(.data$p.value)
+
+  if (length(value) != 1 || !is.finite(value)) {
+    stop(sprintf(
+      "Could not recover one P value for %s / %s from %s [%s].",
+      measure, contrast, path, sheet
+    ))
+  }
+
+  value
+}
+
+immediate_h2_path <- paste0(
+  "../Study_2_Main_Results/results/H2/",
+  "H2_Attitude_Change_Immediate_Results.xlsx"
+)
+completer_h2_path <- paste0(
+  "../Study_2_FollowUp_Results/Follow-Up Completers Only/results/",
+  "Follow-Up Activity/H2/H2_Attitude_Change_Longterm_PPF.xlsx"
+)
+
+# Panel A/B annotations come from the same model outputs used for the article:
+# the initial-session Pre-Post model for all participants and the covariate-
+# adjusted Pre-Post-Follow-up model for follow-up completers.
+p_trust_all <- extract_unique_p(
+  immediate_h2_path, "Posthoc_Results", "AI_Trust", "Post - Pre"
+)
+p_trust_completers <- extract_unique_p(
+  completer_h2_path, "Posthoc_Stage_Results", "AI_Trust", "follow - Pre"
+)
+p_affect_all <- extract_unique_p(
+  immediate_h2_path, "Posthoc_Results", "AI_Affect", "Post - Pre"
+)
+p_affect_completers <- extract_unique_p(
+  completer_h2_path, "Posthoc_Stage_Results", "AI_Affect", "follow - Pre"
+)
+
+# Fit Phase * Label MAR model and return EMMs marginalised over Label + pairwise contrasts
+get_phase_mar <- function(data, vars, phase_short_labels) {
+  cols <- unname(vars)
+  keep_cols <- c("ID", "Label", "Age", "Gender", "Field", "Used_LLM_Hours", cols)
+  sub_dat <- as.data.frame(data)[, keep_cols, drop = FALSE]
+
+  long_dat <- tidyr::pivot_longer(
+    sub_dat,
+    cols = dplyr::all_of(cols),
+    names_to = "varname",
+    values_to = "Value"
+  )
+  long_dat$Phase <- factor(
+    names(vars)[match(long_dat$varname, vars)],
+    levels = names(vars)
+  )
+  long_dat <- long_dat[!is.na(long_dat$Value), ]
+
+  model <- lmer(
+    Value ~ Phase * Label + Age + Gender + Field + Used_LLM_Hours + (1 | ID),
+    data = long_dat
+  )
+
+  emm <- emmeans(model, ~ Phase)
+  emm_df <- as.data.frame(emm)
+  emm_df <- dplyr::rename(emm_df, mean = emmean, lower = lower.CL, upper = upper.CL)
+  emm_df$Phase_short <- factor(
+    phase_short_labels[as.character(emm_df$Phase)],
+    levels = phase_short_labels
+  )
+  emm_df$ci <- (emm_df$upper - emm_df$lower) / 2
+
+  pairs_df <- as.data.frame(pairs(emm, adjust = "tukey"))
+
+  list(emm = emm_df, pairs = pairs_df, n = length(unique(long_dat$ID)))
+}
+```
+
+## Panel (a): AI trust (pre, post, follow-up)
+```{r figure-3a-ai-trust-pre-post-1, message = F, warning = F}
+res31_all <- data_preprocessing(
+  data = data_filtered,
+  label_col = c("Pre_AI_Trust", "Post_AI_Trust"),
+  new_columns_name = c("Pre_task", "Post_task"),
+  data_columns = c("Pre_task", "Post_task"),
+  one_names_values = "Phase",
+  one_values_values = "Rating",
+  after_columns_name = c("Pre task", "Post task"),
+  phase_subtitle_name = c("", ""),
+  phase_short_name = c("Pre task", "Post task"),
+  groupby_col = NULL
+)
+
+res31_1 <- res31_all$stats_summary
+
+data_filtered1 <- data_filtered[, c("Label", "Pre_AI_Trust", "Post_AI_Trust", "follow_AI_Trust")]
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_AI_Trust), ]
+
+res31_fu <- data_preprocessing(
+  data = data_filtered2,
+  label_col = c("Pre_AI_Trust", "Post_AI_Trust", "follow_AI_Trust"),
+  new_columns_name = c("Pre_task", "Post_task", "Follow_up"),
+  data_columns = c("Pre_task", "Post_task", "Follow_up"),
+  one_names_values = "Phase",
+  one_values_values = "Rating",
+  after_columns_name = c("Pre task", "Post task", "Follow-up"),
+  phase_subtitle_name = c("", "", ""),
+  phase_short_name = c("Pre task", "Post task", "Follow-up"),
+  groupby_col = NULL
+)
+
+res31_2 <- res31_fu$stats_summary
+
+res31_1$Label <- "All participants"
+res31_2$Label <- "Follow-up completers"
+
+df_combined31 <- bind_rows(res31_2, res31_1) %>%
+  mutate(
+    Phase_short = factor(Phase_short, levels = c("Pre task", "Post task", "Follow-up")),
+    Label = factor(Label, levels = c("Follow-up completers", "All participants")),
+    x_plot = as.numeric(Phase_short),
+    mean_pct = mean,
+    ci_pct = ci95
+  ) %>%
+  filter(!is.na(x_plot))
+
+all_y_pre1 <- df_combined31 %>%
+  filter(Label == "All participants", x_plot == 1) %>%
+  pull(mean_pct)
+
+all_y_post1 <- df_combined31 %>%
+  filter(Label == "All participants", x_plot == 2) %>%
+  pull(mean_pct)
+
+fu_y_pre1 <- df_combined31 %>%
+  filter(Label == "Follow-up completers", x_plot == 1) %>%
+  pull(mean_pct)
+
+fu_y_follow1 <- df_combined31 %>%
+  filter(Label == "Follow-up completers", x_plot == 3) %>%
+  pull(mean_pct)
+
+fig31 <- ggplot(df_combined31, aes(x = x_plot, y = mean_pct)) +
+  geom_line(aes(group = Label, linetype = Label), color = "black", linewidth = DATA_LINE_SIZE, alpha = 1) +
+  geom_linerange(
+    aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct),
+    color = "black", linewidth = ERROR_LINE_SIZE, alpha = 1
+  ) +
+  geom_point(aes(shape = Label, fill = Label), color = "black", size = POINT_SIZE, stroke = POINT_STROKE) +
+  geom_curve(
+    aes(x = 2.05, xend = 2.05, y = all_y_pre1, yend = all_y_post1),
+    curvature = 0.3, linewidth = LINE_SIZE, color = "black"
+  ) +
+  annotate(
+    "text",
+    x = 2.05, y = 3.22,
+    label = format_p(p_trust_all),
+    parse = TRUE,
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, hjust = 0.5
+  ) +
+  geom_curve(
+    aes(x = 3.05, xend = 3.05, y = fu_y_pre1, yend = fu_y_follow1),
+    curvature = 0.3, linewidth = LINE_SIZE, color = "black", linetype = "dashed"
+  ) +
+  annotate(
+    "text",
+    x = 3.05, y = 3.29,
+    label = format_p(p_trust_completers),
+    parse = TRUE,
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, hjust = 0.5
+  ) +
+  scale_shape_manual(
+    values = c("All participants" = 21, "Follow-up completers" = 21),
+    breaks = c("Follow-up completers", "All participants"),
+    labels = expression(
+      "Follow-up completers (" * italic(n) * " = 84)",
+      "All participants (" * italic(n) * " = 175)"
+    )
+  ) +
+  scale_fill_manual(
+    values = c("All participants" = "black", "Follow-up completers" = "white"),
+    breaks = c("Follow-up completers", "All participants"),
+    labels = expression(
+      "Follow-up completers (" * italic(n) * " = 84)",
+      "All participants (" * italic(n) * " = 175)"
+    )
+  ) +
+  scale_linetype_manual(
+    values = c("All participants" = "solid", "Follow-up completers" = "dashed"),
+    breaks = c("Follow-up completers", "All participants"),
+    labels = expression(
+      "Follow-up completers (" * italic(n) * " = 84)",
+      "All participants (" * italic(n) * " = 175)"
+    )
+  ) +
+  scale_x_continuous(breaks = 1:3, labels = c("Pre task", "Post task", "Follow-up")) +
+  scale_y_continuous(breaks = seq(3, 4, 0.25), limits = c(3, 4), expand = c(0, 0)) +
+  geom_segment(aes(x = 1, xend = 2, y = 3, yend = 3), color = "black", linewidth = AXIS_LINE_SIZE) +
+  geom_segment(aes(x = 2, xend = 3, y = 3, yend = 3), color = "black", linewidth = AXIS_LINE_SIZE) +
+  labs(x = NULL, y = "AI trust") +
+  coord_cartesian(ylim = c(3, 4), clip = "off") +
+  theme_classic(base_size = FONT_SIZE_PT, base_family = FONT_FAMILY) +
+  theme(
+    axis.line.x = element_blank(),
+    text = element_text(family = FONT_FAMILY),
+    axis.ticks.length = unit(TICK_LENGTH_PT, "pt"),
+    axis.ticks = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.line = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.title.x = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(t = 5)),
+    axis.title.y = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(r = 5)),
+    axis.text.x = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(t = 3.5)),
+    axis.text.y = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(r = 3.5)),
+    legend.position = c(0.44, 0.93),
+    legend.title = element_blank(),
+    legend.background = element_rect(fill = "transparent", color = NA),
+    legend.box.background = element_rect(fill = "transparent", color = NA),
+    legend.key = element_rect(fill = "transparent", color = NA),
+    legend.key.height = unit(8, "pt"),
+    legend.spacing.y = unit(0, "pt"),
+    legend.margin = margin(0, 0, 0, 0),
+    legend.text = element_text(size = FONT_SIZE_PT),
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank()
+  ) +
+  guides(
+    fill = guide_legend(
+      nrow = 2,
+      byrow = TRUE,
+      keyheight = unit(8, "pt"),
+      override.aes = list(shape = 21, size = POINT_SIZE, stroke = POINT_STROKE)
+    ),
+    linetype = "none",
+    shape = "none"
+  )
+
+print(fig31)
+```
+
+## Panel (b): AI affect (pre, post, follow-up)
+```{r figure-3b-ai-affect-pre-post-1, message = F, warning = F}
+res32_all <- data_preprocessing(
+  data = data_filtered,
+  label_col = c("Pre_AI_Affect", "Post_AI_Affect"),
+  new_columns_name = c("Pre_task", "Post_task"),
+  data_columns = c("Pre_task", "Post_task"),
+  one_names_values = "Phase",
+  one_values_values = "Rating",
+  after_columns_name = c("Pre task", "Post task"),
+  phase_subtitle_name = c("", ""),
+  phase_short_name = c("Pre task", "Post task"),
+  groupby_col = NULL
+)
+
+res32_1 <- res32_all$stats_summary
+
+data_filtered1 <- data_filtered[, c("Label", "Pre_AI_Affect", "Post_AI_Affect", "follow_AI_Affect")]
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_AI_Affect), ]
+
+res32_fu <- data_preprocessing(
+  data = data_filtered2,
+  label_col = c("Pre_AI_Affect", "Post_AI_Affect", "follow_AI_Affect"),
+  new_columns_name = c("Pre_task", "Post_task", "Follow_up"),
+  data_columns = c("Pre_task", "Post_task", "Follow_up"),
+  one_names_values = "Phase",
+  one_values_values = "Rating",
+  after_columns_name = c("Pre task", "Post task", "Follow-up"),
+  phase_subtitle_name = c("", "", ""),
+  phase_short_name = c("Pre task", "Post task", "Follow-up"),
+  groupby_col = NULL
+)
+
+res32_2 <- res32_fu$stats_summary
+
+res32_1$Label <- "All participants"
+res32_2$Label <- "Follow-up completers"
+
+df_combined32 <- bind_rows(res32_2, res32_1) %>%
+  mutate(
+    Phase_short = factor(Phase_short, levels = c("Pre task", "Post task", "Follow-up")),
+    Label = factor(Label, levels = c("Follow-up completers", "All participants")),
+    x_plot = as.numeric(Phase_short),
+    mean_pct = mean,
+    ci_pct = ci95
+  ) %>%
+  filter(!is.na(x_plot))
+
+all_y_pre <- df_combined32 %>%
+  filter(Label == "All participants", x_plot == 1) %>%
+  pull(mean_pct)
+
+all_y_post <- df_combined32 %>%
+  filter(Label == "All participants", x_plot == 2) %>%
+  pull(mean_pct)
+
+fu_y_pre <- df_combined32 %>%
+  filter(Label == "Follow-up completers", x_plot == 1) %>%
+  pull(mean_pct)
+
+fu_y_follow <- df_combined32 %>%
+  filter(Label == "Follow-up completers", x_plot == 3) %>%
+  pull(mean_pct)
+
+fig32 <- ggplot(df_combined32, aes(x = x_plot, y = mean_pct)) +
+  geom_line(aes(group = Label, linetype = Label), color = "black", linewidth = DATA_LINE_SIZE, alpha = 1) +
+  geom_linerange(
+    aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct),
+    color = "black", linewidth = ERROR_LINE_SIZE, alpha = 1
+  ) +
+  geom_point(aes(shape = Label, fill = Label), color = "black", size = POINT_SIZE, stroke = POINT_STROKE) +
+  geom_curve(
+    aes(x = 2.05, xend = 2.05, y = all_y_pre, yend = all_y_post),
+    curvature = 0.3, linewidth = LINE_SIZE, color = "black"
+  ) +
+  annotate(
+    "text",
+    x = 2.05, y = 3.93,
+    label = format_p(p_affect_all),
+    parse = TRUE,
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, hjust = 0.5
+  ) +
+  geom_curve(
+    aes(x = 3.05, xend = 3.05, y = fu_y_pre, yend = fu_y_follow),
+    curvature = 0.3, linewidth = LINE_SIZE, color = "black", linetype = "dashed"
+  ) +
+  annotate(
+    "text",
+    x = 3.05, y = 3.97,
+    label = format_p(p_affect_completers),
+    parse = TRUE,
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, hjust = 0.5
+  ) +
+  scale_shape_manual(
+    values = c("All participants" = 21, "Follow-up completers" = 21),
+    labels = c(
+      "All participants" = "All participants",
+      "Follow-up completers" = "Follow-up completers"
+    )
+  ) +
+  scale_fill_manual(
+    values = c("All participants" = "black", "Follow-up completers" = "white"),
+    labels = c(
+      "All participants" = "All participants",
+      "Follow-up completers" = "Follow-up completers"
+    )
+  ) +
+  scale_linetype_manual(
+    values = c("All participants" = "solid", "Follow-up completers" = "dashed"),
+    labels = c(
+      "All participants" = "All participants",
+      "Follow-up completers" = "Follow-up completers"
+    )
+  ) +
+  scale_x_continuous(breaks = 1:3, labels = c("Pre task", "Post task", "Follow-up")) +
+  scale_y_continuous(breaks = seq(3.5, 4.5, 0.25), limits = c(3.5, 4.5), expand = c(0, 0)) +
+  geom_segment(aes(x = 1, xend = 2, y = 3.5, yend = 3.5), color = "black", linewidth = AXIS_LINE_SIZE) +
+  geom_segment(aes(x = 2, xend = 3, y = 3.5, yend = 3.5), color = "black", linewidth = AXIS_LINE_SIZE) +
+  labs(x = NULL, y = "AI affect") +
+  coord_cartesian(ylim = c(3.5, 4.5), clip = "off") +
+  theme_classic(base_size = FONT_SIZE_PT, base_family = FONT_FAMILY) +
+  theme(
+    axis.line.x = element_blank(),
+    text = element_text(family = FONT_FAMILY),
+    axis.ticks.length = unit(TICK_LENGTH_PT, "pt"),
+    axis.ticks = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.line = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.title.x = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(t = 5)),
+    axis.title.y = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(r = 5)),
+    axis.text.x = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(t = 3.5)),
+    axis.text.y = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(r = 3.5)),
+    legend.position = "none",
+    panel.grid.minor = element_blank(),
+    panel.border = element_blank()
+  )
+
+print(fig32)
+```
+
+## Panel (c): Subjective AI literacy and AI self-efficacy (MAR EMM, N = 175)
+```{r figure-3c-subjective-ai-literacy-and-1, message = F, warning = F}
+# Gray ID lines: only the followup completers (paired observations)
+data_filtered1 <- data_filtered[, c(
+  "ID",
+  "Label",
+  "Pre_AILS_CCS_Subjective_AI_Literacy",
+  "follow_AILS_CCS_Subjective_AI_Literacy"
+)]
+
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_AILS_CCS_Subjective_AI_Literacy), ]
+
+df1 <- data_filtered2[, c("ID", "Pre_AILS_CCS_Subjective_AI_Literacy")]
+df1$Group <- "Pre_task"
+names(df1) <- c("ID", "measure", "Group")
+
+df2 <- data_filtered2[, c("ID", "follow_AILS_CCS_Subjective_AI_Literacy")]
+df2$Group <- "Follow_up"
+names(df2) <- c("ID", "measure", "Group")
+
+df12 <- bind_rows(df1, df2)
+df12$Label <- "Subjective AI literacy"
+
+data_filtered1 <- data_filtered[, c("ID", "Label", "Pre_AI_Self_Efficacy", "follow_AI_Self_Efficacy")]
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_AI_Self_Efficacy), ]
+
+df3 <- data_filtered2[, c("ID", "Pre_AI_Self_Efficacy")]
+df3$Group <- "Pre_task"
+names(df3) <- c("ID", "measure", "Group")
+
+df4 <- data_filtered2[, c("ID", "follow_AI_Self_Efficacy")]
+df4$Group <- "Follow_up"
+names(df4) <- c("ID", "measure", "Group")
+
+df34 <- bind_rows(df3, df4)
+df34$Label <- "AI self-efficacy"
+
+df1234 <- bind_rows(df12, df34)
+df1234$Group <- factor(df1234$Group, levels = c("Pre_task", "Follow_up"))
+
+# Mean line / error bars / points: MAR-model EMMs and 95% CIs (N = 175)
+mar_subj <- get_phase_mar(
+  data_mar,
+  vars = c(Pre = "Pre_AILS_CCS_Subjective_AI_Literacy",
+           follow = "follow_AILS_CCS_Subjective_AI_Literacy"),
+  phase_short_labels = c(Pre = "Pre_task", follow = "Follow_up")
+)
+mar_self <- get_phase_mar(
+  data_mar,
+  vars = c(Pre = "Pre_AI_Self_Efficacy", follow = "follow_AI_Self_Efficacy"),
+  phase_short_labels = c(Pre = "Pre_task", follow = "Follow_up")
+)
+
+# MAR EMM means (N = 175)
+mar_means <- bind_rows(
+  mar_subj$emm %>% dplyr::mutate(Label = "Subjective AI literacy"),
+  mar_self$emm %>% dplyr::mutate(Label = "AI self-efficacy")
+)
+mar_means$Group <- factor(as.character(mar_means$Phase_short), levels = c("Pre_task", "Follow_up"))
+
+# Error bars: model-based 95% CI from the same MAR EMMs (N = 175)
+morey_sum <- mar_means %>%
+  dplyr::select(Group, Label, mean, ci) %>%
+  dplyr::mutate(measure = mean)
+
+p_subj <- mar_subj$pairs$p.value[mar_subj$pairs$contrast == "Pre - follow"]
+p_self <- mar_self$pairs$p.value[mar_self$pairs$contrast == "Pre - follow"]
+
+p_values <- data.frame(
+  Label = c("Subjective AI literacy", "AI self-efficacy"),
+  x = c(1.5, 1.5),
+  y = c(4.85, 4.85),
+  label_text = c(format_p(p_subj), format_p(p_self))
+)
+
+scale_references <- data.frame(
+  Label = c("AI self-efficacy", "Subjective AI literacy"),
+  x_start = c(1, 1),
+  x_end = c(2, 2),
+  x = c(1.5, 1.5),
+  y = c(2.5, 3),
+  label = c("Midpoint", "Neutral")
+)
+
+fig_33 <- ggplot(df1234, aes(x = Group, y = measure)) +
+  geom_line(aes(group = ID), color = "gray80", alpha = 0.5, linewidth = LINE_SIZE) +
+  geom_segment(
+    data = scale_references,
+    aes(x = x_start, xend = x_end, y = y, yend = y),
+    linetype = "dashed", color = "gray50", linewidth = LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_line(
+    data = morey_sum,
+    aes(x = Group, y = measure, group = 1),
+    color = "black", linewidth = DATA_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_linerange(
+    data = morey_sum,
+    aes(x = Group, y = measure, ymin = measure - ci, ymax = measure + ci),
+    color = "black", linewidth = ERROR_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = morey_sum,
+    aes(x = Group, y = measure),
+    color = "black", size = POINT_SIZE, stroke = POINT_STROKE,
+    inherit.aes = FALSE
+  ) +
+  facet_wrap(~Label, nrow = 1) +
+  geom_text(
+    data = p_values,
+    aes(x = x, y = y, label = label_text),
+    parse = TRUE,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM,
+    hjust = 0.5
+  ) +
+  geom_text(
+    data = scale_references,
+    aes(x = x, y = y, label = label),
+    family = FONT_FAMILY,
+    hjust = 0.5, vjust = -0.55, color = "black", size = FONT_SIZE_GEOM
+  ) +
+  theme_classic(base_size = FONT_SIZE_PT, base_family = FONT_FAMILY) +
+  labs(x = NULL, y = "Rating") +
+  scale_y_continuous(limits = c(1, 5), breaks = seq(1, 5, 1), expand = c(0, 0)) +
+  scale_x_discrete(labels = c("Pre_task" = "Pre task", "Follow_up" = "Follow-up")) +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(size = FONT_SIZE_PT, vjust = 1.5),
+    panel.spacing = unit(0.2, "cm"),
+    axis.ticks = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.line = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    legend.position = "none",
+    axis.ticks.length = unit(TICK_LENGTH_PT, "pt"),
+    axis.title.x = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(t = 5)),
+    axis.title.y = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(r = 5)),
+    axis.text.x = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(t = 3.5)),
+    axis.text.y = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(r = 3.5))
+  ) +
+  coord_capped_cart(bottom = capped_horizontal(), left = capped_vertical())
+
+print(fig_33)
+```
+
+## Panel (d): Objective AI literacy
+```{r figure-3d-objective-ai-literacy-1, message = F, warning = F}
+data_filtered1 <- data_filtered[, c("ID", "Pre_GLAT_Objective_AI_Literacy", "follow_GLAT_Objective_AI_Literacy")]
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_GLAT_Objective_AI_Literacy), ]
+
+df34_1 <- data_filtered2[, c("ID", "Pre_GLAT_Objective_AI_Literacy")]
+df34_1$Group <- "Pre_task"
+names(df34_1) <- c("ID", "measure", "Group")
+
+df34_2 <- data_filtered2[, c("ID", "follow_GLAT_Objective_AI_Literacy")]
+df34_2$Group <- "Follow_up"
+names(df34_2) <- c("ID", "measure", "Group")
+
+df34 <- bind_rows(df34_1, df34_2)
+df34$measure <- df34$measure * 100
+df34$Group <- factor(df34$Group, levels = c("Pre_task", "Follow_up"))
+df34$Label <- "Objective AI literacy"
+
+# Mean line / error bars / points: MAR-model EMMs and 95% CIs (N = 175), scaled to %
+mar_obj <- get_phase_mar(
+  data_mar %>% mutate(
+    Pre_GLAT_Objective_AI_Literacy = Pre_GLAT_Objective_AI_Literacy * 100,
+    follow_GLAT_Objective_AI_Literacy = follow_GLAT_Objective_AI_Literacy * 100
+  ),
+  vars = c(Pre = "Pre_GLAT_Objective_AI_Literacy",
+           follow = "follow_GLAT_Objective_AI_Literacy"),
+  phase_short_labels = c(Pre = "Pre_task", follow = "Follow_up")
+)
+
+# Error bars: model-based 95% CI from the same MAR EMMs (N = 175), scaled to %
+morey_sum <- mar_obj$emm
+morey_sum$Group <- factor(as.character(morey_sum$Phase_short), levels = c("Pre_task", "Follow_up"))
+morey_sum$measure <- morey_sum$mean
+morey_sum$Label <- "Objective AI literacy"
+
+p_obj <- mar_obj$pairs$p.value[mar_obj$pairs$contrast == "Pre - follow"]
+
+p_values <- data.frame(
+  Label = "Objective AI literacy",
+  x = 1.5,
+  y = 96,
+  label_text = format_p(p_obj)
+)
+
+fig_34 <- ggplot(df34, aes(x = Group, y = measure)) +
+  geom_line(aes(group = ID), color = "gray80", alpha = 0.5, linewidth = LINE_SIZE) +
+  geom_segment(
+    aes(x = 1, xend = 2, y = 25, yend = 25),
+    linetype = "dashed", color = "gray50", linewidth = LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_line(
+    data = morey_sum,
+    aes(x = Group, y = measure, group = 1),
+    color = "black", linewidth = DATA_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_linerange(
+    data = morey_sum,
+    aes(x = Group, y = measure, ymin = measure - ci, ymax = measure + ci),
+    color = "black", linewidth = ERROR_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = morey_sum,
+    aes(x = Group, y = measure),
+    color = "black", size = POINT_SIZE, stroke = POINT_STROKE,
+    inherit.aes = FALSE
+  ) +
+  facet_wrap(~Label) +
+  geom_text(
+    data = p_values,
+    aes(x = x, y = y, label = label_text),
+    parse = TRUE,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM,
+    hjust = 0.5
+  ) +
+  geom_text(
+    data = data.frame(Label = "Objective AI literacy", x = 1.5, y = 25, label = "Chance"),
+    aes(x = x, y = y, label = label),
+    family = FONT_FAMILY,
+    hjust = 0.5, vjust = -0.55, color = "black", size = FONT_SIZE_GEOM
+  ) +
+  theme_classic(base_size = FONT_SIZE_PT, base_family = FONT_FAMILY) +
+  labs(x = NULL, y = "Accuracy (%)") +
+  scale_y_continuous(
+    breaks = seq(0, 100, 20),
+    limits = c(0, 100),
+    expand = c(0, 0)
+  ) +
+  scale_x_discrete(labels = c("Pre_task" = "Pre task", "Follow_up" = "Follow-up")) +
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(size = FONT_SIZE_PT, vjust = 1.5),
+    panel.spacing = unit(0.2, "cm"),
+    legend.position = "none",
+    axis.ticks = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.line = element_line(colour = "black", linewidth = AXIS_LINE_SIZE),
+    axis.ticks.length = unit(TICK_LENGTH_PT, "pt"),
+    axis.title.x = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(t = 5)),
+    axis.title.y = element_text(face = "plain", size = FONT_SIZE_PT, margin = margin(r = 5)),
+    axis.text.x = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(t = 3.5)),
+    axis.text.y = element_text(face = "plain", size = FONT_SIZE_PT, color = "black", margin = margin(r = 3.5))
+  ) +
+  coord_capped_cart(bottom = capped_horizontal(), left = capped_vertical())
+
+print(fig_34)
+```
+
+## Combine panels and save figure
+```{r combine-panels-and-save-figure-1, message = F, warning = F}
+combined_plot <- wrap_plots(
+  A = fig31, B = fig32, C = fig_33, D = fig_34,
+  design = "A#CD\nB#CD"
+) +
+  plot_layout(
+    widths = c(0.72, 0.06, 0.8, 0.5),
+    heights = c(1, 1)
+  ) +
+  plot_annotation(tag_levels = "A") &
+  theme(
+    text = element_text(family = FONT_FAMILY),
+    plot.tag.position = c(0, 1),
+    plot.tag = element_text(size = TAG_SIZE_PT, face = "bold", hjust = 0)
+  )
+
+print(combined_plot)
+
+ggsave(
+  "figure/Figure_S01_AI_Related_Measures.pdf",
+  combined_plot,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  device = cairo_pdf,
+  family = FONT_FAMILY,
+  symbolfamily = FONT_FAMILY,
+  bg = "white"
+)
+ggsave("figure/Figure_S01_AI_Related_Measures.png", combined_plot, width = FIGURE_WIDTH_IN, height = FIGURE_HEIGHT_IN, dpi = 300, bg = "white")
+ggsave("figure/Figure_S01_AI_Related_Measures.svg", combined_plot, width = FIGURE_WIDTH_IN, height = FIGURE_HEIGHT_IN, bg = "white")
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```

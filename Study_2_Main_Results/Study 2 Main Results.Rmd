@@ -1,0 +1,2211 @@
+---
+title: "Study 2 — Main (Initial-Session) Analyses"
+author: "Siyuan Huang"
+date: "2025-07-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE, message = FALSE, warning = FALSE,
+  cache = TRUE, autodep = TRUE, cache.lazy = FALSE
+)
+
+set.seed(42)
+```
+
+# Study 2 — Main (Initial-Session) Analyses
+
+This document reports the primary Study 2 analyses on the initial
+session (Pre, Stage 1–3, Post). Participants with a Stage-1 baseline
+(task 0) accuracy of `>= 0.90` are excluded by a ceiling-effect screen,
+consistent with all other Study 2 analyses.
+
+The hypotheses are: **H1** learning progression in task performance
+(accuracy) across stages by labelling condition; **H2** confidence,
+willingness, usefulness, attitude change (Pre → Post), and post-survey
+experience; and **H3** moderation of these effects by individual-
+difference measures. Baseline equivalence across conditions is checked
+first.
+
+## Packages
+```{r packages, cache = FALSE}
+library(broom)
+library(car)
+library(DescTools)
+library(dplyr)
+library(DT)
+library(effectsize)
+library(emmeans)
+library(ggplot2)
+library(janitor)
+library(lme4)
+library(lmerTest)
+library(lsr)
+library(MASS)
+library(openxlsx)
+library(ordinal)
+library(performance)
+library(readxl)
+library(stringr)
+library(tidyr)
+library(report)
+library(interactions)
+library(forcats)
+library(tibble)
+
+# Output directories: results are organised into per-section subfolders.
+for (d in c("Baseline", "H1", "H2", "H3")) {
+  dir.create(file.path("results", d), recursive = TRUE, showWarnings = FALSE)
+}
+```
+
+## Data Processing
+
+The data are loaded, the ceiling-effect screen
+(`stage1_task0_accuracy < 0.9`) is applied, background variables are
+recoded, and the data are reshaped to long format. The factor ordering
+AI < AI + Human < Human is used throughout.
+
+### Load Data
+```{r load-data-1}
+df <- read_excel("data/Study_2_Main_Results_Data.xlsx")
+head(df)
+
+# Set Label Factor
+df <- df %>%
+  mutate(Label = factor(Label, levels = c("AI", "AI Human", "Human")))
+```
+
+### Stage 1 Task 0 Accuracy Distribution
+```{r stage-1-task-0-accuracy-distribution-1}
+ggplot(df, aes(x = stage1_task0_accuracy)) +
+  geom_histogram(binwidth = 0.05, fill = "skyblue", color = "black") +
+  stat_bin(
+    binwidth = 0.05,
+    geom = "text",
+    aes(label = ..count..),
+    vjust = -0.3
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 1, by = 0.05),
+    labels = sprintf("%.2f", seq(0, 1, by = 0.05))
+  ) +
+  labs(
+    title = "Distribution of stage1_task0_accuracy",
+    x = "stage1_task0_accuracy",
+    y = "Frequency"
+  ) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Filter Stage 1 Task 0 Accuracy
+```{r filter-stage-1-task-0-accuracy-1}
+df_over90 <- df %>% filter(stage1_task0_accuracy >= 0.9)
+
+sum(df$stage1_task0_accuracy >= 0.9)
+
+df <- df %>% filter(stage1_task0_accuracy < 0.9)
+```
+
+### Recode Background Variables
+```{r recode-background-variables-1}
+df <- df %>%
+  mutate(
+    Stats_Background = cut(
+      as.numeric(as.character(Stats_Background)),
+      breaks = c(1, 3, 5, 8),
+      labels = c("Low", "Medium", "High"),
+      right = TRUE,
+      include.lowest = TRUE
+    ),
+    Used_LLM_Frequency = forcats::fct_collapse(
+      as.character(Used_LLM_Frequency),
+      Rarely = c("Never", "Less than once a month", "1–3 times per month"),
+      Often = c("Weekly", "Daily")
+    ),
+    Used_LLM_Hours = forcats::fct_collapse(
+      as.character(Used_LLM_Hours),
+      None = "0",
+      Low = c("1–5", "6–10"),
+      High = c("11–20", ">20")
+    )
+  )
+```
+
+### Convert to Long Format
+```{r convert-to-long-format-1}
+cols_to_long <- grep("^(Pre|Post|stage\\d+)_", colnames(df), value = TRUE)
+
+df_long <- df %>%
+  pivot_longer(
+    cols = all_of(cols_to_long),
+    names_to = "fullvar",
+    values_to = "Value"
+  ) %>%
+  mutate(
+    Phase = str_extract(fullvar, "^(Pre|Post|stage\\d+)"),
+    tmp = str_remove(fullvar, "^(Pre|Post|stage\\d+)_"),
+    task = ifelse(str_detect(tmp, "^task\\d+"), str_extract(tmp, "^task\\d+"), NA),
+    measure = ifelse(!is.na(task), str_remove(tmp, "^task\\d+_"), tmp),
+    tmp = NULL,
+    fullvar = NULL
+  )
+
+head(df_long)
+```
+
+## Baseline Equivalence Across Conditions
+
+Per-condition descriptive statistics and one-way ANOVAs on the seven
+pre-survey measures verify that the labelling conditions did not differ
+at baseline.
+
+```{r baseline-equivalence-across-conditions-1}
+varnames <- c(
+  "Pre_GLAT_Objective_AI_Literacy",
+  "Pre_AILS_CCS_Subjective_AI_Literacy",
+  "Pre_AI_Trust",
+  "Pre_AI_Usefulness",
+  "Pre_AI_Affect",
+  "Pre_AI_Self_Efficacy",
+  "Pre_Behavioral_Intention"
+)
+
+label_summary_table <- bind_rows(lapply(varnames, function(v) {
+  df %>%
+    group_by(Label) %>%
+    summarise(
+      Mean = round(mean(.data[[v]], na.rm = TRUE), 2),
+      SD = round(sd(.data[[v]], na.rm = TRUE), 2),
+      n = sum(!is.na(.data[[v]])),
+      .groups = "drop"
+    ) %>%
+    mutate(Variable = v) %>%
+    relocate(Variable)
+}))
+
+label_summary_table
+```
+
+### Baseline ANOVA by Label
+```{r baseline-anova-by-label-1}
+anova_results_table <- bind_rows(lapply(varnames, function(v) {
+  aov_res <- summary(aov(df[[v]] ~ df$Label))
+  data.frame(
+    Variable = v,
+    F_value = round(aov_res[[1]][["F value"]][1], 2),
+    p_value = round(aov_res[[1]][["Pr(>F)"]][1], 4)
+  )
+}))
+
+anova_results_table
+```
+
+### Export Baseline Results
+```{r export-baseline-results-1}
+all_results <- list(
+Label_Summary = label_summary_table,
+ANOVA_Results = anova_results_table
+)
+
+write.xlsx(
+all_results,
+file = "results/Baseline/Baseline_Charateristics_By_Label.xlsx"
+)
+```
+
+## Manipulation Check: Source Recall
+
+A manipulation check was administered after the learning task, asking
+participants to recall which type of guidance they had received (AI,
+AI + Human, or Human). For a source-attribution experiment, this
+source-recall rate is the key manipulation check: in the AI + Human
+condition in particular, confusions with the Human or AI labels could
+dilute the manipulation in ways that bear on interpretation.
+
+### Recall Accuracy by Condition
+```{r recall-accuracy-by-condition-1}
+mc_df <- df %>%
+  mutate(
+    Recalled_Label = dplyr::recode(Recalled_Label, "AI + Human" = "AI Human"),
+    Recalled_Label = factor(Recalled_Label, levels = c("AI", "AI Human", "Human")),
+    Passed_Check = as.integer(as.character(Label) == as.character(Recalled_Label))
+  )
+
+# 3 x 3 confusion matrix (rows = assigned condition, columns = recalled)
+confusion_counts <- mc_df %>%
+  tabyl(Label, Recalled_Label) %>%
+  adorn_totals(c("row", "col"))
+confusion_counts
+
+confusion_props <- mc_df %>%
+  tabyl(Label, Recalled_Label) %>%
+  adorn_percentages("row") %>%
+  adorn_pct_formatting(digits = 1) %>%
+  adorn_ns()
+confusion_props
+
+# Per-condition correct-recall rate
+recall_rate <- mc_df %>%
+  group_by(Label) %>%
+  summarise(
+    N        = n(),
+    N_Passed = sum(Passed_Check),
+    Recall_Rate = mean(Passed_Check)
+  )
+recall_rate
+
+# Overall recall rate and chi-square test of association
+overall_rate <- mean(mc_df$Passed_Check)
+cat("Overall correct-recall rate:", round(overall_rate, 3), "\n")
+
+chisq_test <- chisq.test(table(mc_df$Label, mc_df$Recalled_Label))
+print(chisq_test)
+```
+
+## H1: Learning Progression in Task Performance (Accuracy)
+
+H1 tests whether task accuracy improves across the initial-session stages
+(Stage 1 → 2 → 3) and whether this differs by labelling condition. The
+registered participant-intercept specification is primary. The attempted
+participant-specific Stage-slope specification, the task-structured random-
+effects model, and the overall 17-item analysis are reported alongside it.
+
+### Data Filter
+```{r data-filter-1}
+performance_long <- df_long %>%
+  rename(
+    Task = task,
+    Measure = measure
+  ) %>%
+  filter(
+    Measure == "accuracy",
+    Task != "task0"
+  )
+
+head(performance_long)
+```
+
+### Descriptive Summary
+```{r descriptive-summary-1}
+stage_summary <- performance_long %>%
+  group_by(Phase, Label) %>%
+  summarise(
+    Mean = round(mean(Value, na.rm = TRUE), 2),
+    SD = round(sd(Value, na.rm = TRUE), 2),
+    N = n(),
+    .groups = "drop"
+  )
+
+stage_summary
+```
+
+### Registered Participant-Intercept Model
+```{r registered-participant-intercept-model}
+performance_long <- performance_long %>%
+  mutate(
+    Label = factor(Label),
+    Phase = factor(Phase, levels = c("stage3", "stage2", "stage1")),
+    Task = factor(Task),
+    Stats_Background = factor(Stats_Background)
+  )
+
+model <- lmer(
+  Value ~ Phase * Label + (1 | ID),
+  data = performance_long
+)
+
+model_summary <- summary(model)$coefficients
+anova_results <- anova(model, type = 3, ddf = "Satterthwaite")
+eta_sq <- effectsize::eta_squared(model, partial = TRUE)
+
+model_summary
+anova_results
+eta_sq
+```
+
+### Registered Stage-Slope Diagnostic and Sensitivity Models
+```{r h1-model-hierarchy}
+fit_lmer_with_warnings <- function(formula, data) {
+  captured_warnings <- character()
+  fitted_model <- withCallingHandlers(
+    lmer(formula, data = data),
+    warning = function(w) {
+      captured_warnings <<- c(captured_warnings, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+  list(model = fitted_model, warnings = unique(captured_warnings))
+}
+
+model_slope_fit <- fit_lmer_with_warnings(
+  Value ~ Phase * Label + (1 + Phase | ID),
+  performance_long
+)
+model_slope <- model_slope_fit$model
+
+model_expanded_fit <- fit_lmer_with_warnings(
+  Value ~ Phase * Label + (1 | ID) + (1 | Task) + (1 | ID:Task),
+  performance_long
+)
+model_expanded <- model_expanded_fit$model
+
+overall_accuracy <- df_long %>%
+  filter(measure == "accuracy", task == "task0") %>%
+  mutate(
+    Label = factor(Label),
+    Phase = factor(Phase, levels = c("stage3", "stage2", "stage1"))
+  )
+
+model_overall_fit <- fit_lmer_with_warnings(
+  Value ~ Phase * Label + (1 | ID),
+  overall_accuracy
+)
+model_overall <- model_overall_fit$model
+
+extract_model_comparison <- function(name, fit, warnings, analysis_unit) {
+  model_anova <- anova(fit, type = 3, ddf = "Satterthwaite")
+  interaction_row <- model_anova["Phase:Label", , drop = FALSE]
+  optimizer_messages <- fit@optinfo$conv$lme4$messages
+  diagnostic_messages <- unique(c(warnings, optimizer_messages))
+  diagnostic_messages <- diagnostic_messages[!is.na(diagnostic_messages)]
+
+  data.frame(
+    Model = name,
+    Analysis_Unit = analysis_unit,
+    Formula = paste(deparse(formula(fit)), collapse = " "),
+    Observations = nobs(fit),
+    Participants = dplyr::n_distinct(model.frame(fit)$ID),
+    NumDF = interaction_row[["NumDF"]],
+    DenDF = interaction_row[["DenDF"]],
+    F = interaction_row[["F value"]],
+    P = interaction_row[["Pr(>F)"]],
+    Singular = lme4::isSingular(fit, tol = 1e-4),
+    Diagnostic = if (length(diagnostic_messages) == 0) "" else
+      paste(diagnostic_messages, collapse = " | "),
+    stringsAsFactors = FALSE
+  )
+}
+
+h1_model_comparison <- bind_rows(
+  extract_model_comparison(
+    "Registered participant intercept",
+    model,
+    character(),
+    "Three task-level scores per participant x stage"
+  ),
+  extract_model_comparison(
+    "Registered participant-specific Stage slope",
+    model_slope,
+    model_slope_fit$warnings,
+    "Three task-level scores per participant x stage"
+  ),
+  extract_model_comparison(
+    "Expanded task-structured sensitivity",
+    model_expanded,
+    model_expanded_fit$warnings,
+    "Three task-level scores per participant x stage"
+  ),
+  extract_model_comparison(
+    "Overall 17-item aggregation sensitivity",
+    model_overall,
+    model_overall_fit$warnings,
+    "One overall 17-item score per participant x stage"
+  )
+)
+
+h1_model_comparison
+```
+
+#### Post-hoc Comparisons
+```{r post-hoc-comparisons-1}
+posthoc_stage <- emmeans(model, pairwise ~ Phase)
+posthoc_label <- emmeans(model, pairwise ~ Label)
+posthoc_stage_label <- emmeans(model, pairwise ~ Phase | Label)
+posthoc_label_stage <- emmeans(model, pairwise ~ Label | Phase)
+
+cat("===Stage===\n")
+posthoc_stage$contrasts
+cat("\n===Label===\n")
+posthoc_label$contrasts
+cat("\n===Stage:Label===\n")
+posthoc_stage_label$contrasts
+cat("\n===Label:Stage===\n")
+posthoc_label_stage$contrasts
+```
+
+#### Effect Sizes for Contrasts
+```{r effect-sizes-for-contrasts-1}
+cat("===Cohen's d: Stage===\n")
+print(eff_size(posthoc_stage, sigma = sigma(model), edf = df.residual(model)))
+
+cat("\n===Cohen's d: Label===\n")
+print(eff_size(posthoc_label, sigma = sigma(model), edf = df.residual(model)))
+
+cat("\n===Cohen's d: Stage | Label===\n")
+print(eff_size(posthoc_stage_label, sigma = sigma(model), edf = df.residual(model)))
+
+cat("\n===Cohen's d: Label | Stage===\n")
+print(eff_size(posthoc_label_stage, sigma = sigma(model), edf = df.residual(model)))
+```
+
+#### Report and Export Results
+```{r report-and-export-results-1}
+report(anova_results)
+
+write.xlsx(
+  list(
+    Model_Summary = as.data.frame(model_summary),
+    ANOVA = as.data.frame(anova_results),
+    Eta_Squared = as.data.frame(eta_sq),
+    Posthoc_Stage = as.data.frame(posthoc_stage$contrasts),
+    Posthoc_Label = as.data.frame(posthoc_label$contrasts),
+    Posthoc_Stage_Label = as.data.frame(posthoc_stage_label$contrasts),
+    Posthoc_Label_Stage = as.data.frame(posthoc_label_stage$contrasts)
+  ),
+  file = "results/H1/H1_Performance_Comparison_LMM.xlsx",
+  rowNames = TRUE
+)
+
+write.xlsx(
+  list(
+    Model_Comparison = h1_model_comparison,
+    Registered_Intercept_ANOVA = as.data.frame(anova_results),
+    Registered_Slope_ANOVA = as.data.frame(
+      anova(model_slope, type = 3, ddf = "Satterthwaite")
+    ),
+    Expanded_ANOVA = as.data.frame(
+      anova(model_expanded, type = 3, ddf = "Satterthwaite")
+    ),
+    Overall_17_Item_ANOVA = as.data.frame(
+      anova(model_overall, type = 3, ddf = "Satterthwaite")
+    )
+  ),
+  file = "results/H1/H1_Model_Specification_Comparison.xlsx",
+  rowNames = TRUE
+)
+
+write.csv(
+  h1_model_comparison,
+  file = "results/H1/H1_Model_Specification_Comparison.csv",
+  row.names = FALSE
+)
+```
+
+### Mixed Model (With Task)
+```{r mixed-model-with-task-1}
+model_task <- lmer(
+  Value ~ Phase * Label * Task + (1 | ID) + (1 | ID:Task),
+  data = performance_long
+)
+
+model_task_summary <- summary(model_task)$coefficients
+anova_task <- anova(model_task)
+eta_task <- effectsize::eta_squared(model_task, partial = TRUE)
+
+model_task_summary
+anova_task
+eta_task
+```
+
+#### Post-hoc With Task
+```{r post-hoc-with-task-1}
+posthoc_stage_task <- emmeans(model_task, pairwise ~ Phase)
+posthoc_task <- emmeans(model_task, pairwise ~ Task)
+posthoc_label_task <- emmeans(model_task, pairwise ~ Label)
+
+posthoc_stage_by_label_task <- emmeans(model_task, pairwise ~ Phase | Label)
+posthoc_label_by_phase_task <- emmeans(model_task, pairwise ~ Label | Phase)
+posthoc_stage_by_task_task <- emmeans(model_task, pairwise ~ Phase | Task)
+posthoc_3way_task <- emmeans(model_task, pairwise ~ Phase | Task | Label)
+
+posthoc_stage_task$contrasts
+posthoc_task$contrasts
+posthoc_label_task$contrasts
+posthoc_stage_by_label_task$contrasts
+posthoc_label_by_phase_task$contrasts
+posthoc_stage_by_task_task$contrasts
+posthoc_3way_task$contrasts
+
+cat("\n===Cohen's d: Stage===\n")
+print(eff_size(posthoc_stage_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Task===\n")
+print(eff_size(posthoc_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Label===\n")
+print(eff_size(posthoc_label_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Stage | Label===\n")
+print(eff_size(posthoc_stage_by_label_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Label | Phase===\n")
+print(eff_size(posthoc_label_by_phase_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Stage | Task===\n")
+print(eff_size(posthoc_stage_by_task_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+
+cat("\n===Cohen's d: Phase | Task | Label===\n")
+print(eff_size(posthoc_3way_task, sigma = sigma(model_task), edf = df.residual(model_task)))
+```
+
+#### Export With Task
+```{r export-with-task-1}
+write.xlsx(
+  list(
+    Model_Summary = as.data.frame(model_task_summary),
+    ANOVA = as.data.frame(anova_task),
+    Eta_Squared = as.data.frame(eta_task),
+    Posthoc_Stage = as.data.frame(posthoc_stage_task$contrasts),
+    Posthoc_Task = as.data.frame(posthoc_task$contrasts),
+    Posthoc_Label = as.data.frame(posthoc_label_task$contrasts),
+    Posthoc_Stage_Label = as.data.frame(posthoc_stage_by_label_task$contrasts),
+    Posthoc_Label_Stage = as.data.frame(posthoc_label_by_phase_task$contrasts),
+    Posthoc_Stage_Task = as.data.frame(posthoc_stage_by_task_task$contrasts),
+    Posthoc_3way = as.data.frame(posthoc_3way_task$contrasts)
+  ),
+  file = "results/H1/H1_Performance_Comparison_LMM_Task.xlsx",
+  rowNames = TRUE
+)
+```
+
+### Robustness: Item-Level Binomial GLMM
+
+The primary H1 models treat task-level accuracy — a proportion of only 5–6
+binary items — as a Gaussian outcome, which can strain linear-model
+assumptions. As a robustness check we refit the learning-progression effect
+as an **item-level binomial GLMM** (the response family used for the
+early/late analysis), modelling each binary item response directly with
+crossed participant and item intercepts plus a participant-by-item term
+that absorbs repeated exposure and binomial overdispersion:
+
+`correct ~ Stage * Label + (1 | ID) + (1 | Item) + (1 | ID:Item)`
+
+Item responses are read from `correction_raw_data.xlsx` for the same cohort
+as the main model (Stage-1 ceiling-screened), so the two describe the same
+data on different scales. A task-level intercept is omitted (items nest in
+only three tasks, so its variance sits near the boundary while `(1 | Item)`
+already absorbs item clustering); this does not affect the Stage × Label
+inference. Matching the Gaussian LMM confirms the conclusion is robust to
+the modelling choice.
+
+#### Build Item-Level Dataset (Main Cohort)
+```{r itemlevel-data-1}
+# Ground-truth key for the 17 items (task 1: 6, task 2: 5, task 3: 6).
+item_names <- c(paste0("t1_q", 1:6), paste0("t2_q", 1:5), paste0("t3_q", 1:6))
+item_truth <- c(rep(FALSE, 6), rep(FALSE, 5), FALSE, TRUE, TRUE, TRUE, FALSE, TRUE)
+names(item_truth) <- item_names
+
+# Analytic cohort = the same ceiling-screened participants used by the main model.
+cohort_ids <- unique(as.character(df$ID))
+
+stage_cols <- paste0(rep(c("stage1_", "stage2_", "stage3_"), each = length(item_names)), item_names)
+
+item_long <- read_excel("data/correction_raw_data.xlsx") %>%
+  mutate(ID = as.character(ID)) %>%
+  filter(ID %in% cohort_ids) %>%
+  dplyr::select(ID, Label, all_of(stage_cols)) %>%
+  pivot_longer(
+    cols = all_of(stage_cols),
+    names_to = c("Stage", "Item"),
+    names_pattern = "^(stage[123])_(t[123]_q\\d+)$",
+    values_to = "Answer"
+  ) %>%
+  mutate(
+    Truth = item_truth[as.character(Item)],
+    correct = as.integer(as.logical(Answer) == Truth),
+    Task = factor(sub("_q\\d+$", "", Item), levels = c("t1", "t2", "t3")),
+    Item = factor(Item, levels = item_names),
+    # Match the main model's factor ordering (reference = stage3 / AI).
+    Stage = factor(Stage, levels = c("stage3", "stage2", "stage1")),
+    Label = factor(Label, levels = c("AI", "AI Human", "Human")),
+    ID = factor(ID)
+  )
+
+# Cohort check: should equal the main analytic n.
+cat("Item-level cohort n =", dplyr::n_distinct(item_long$ID),
+    "| item responses =", nrow(item_long), "\n")
+head(item_long)
+```
+
+#### Fit Item-Level Binomial GLMM
+```{r itemlevel-model-1}
+itemlevel_model <- glmer(
+  correct ~ Stage * Label + (1 | ID) + (1 | Item) + (1 | ID:Item),
+  data = item_long,
+  family = binomial,
+  control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+)
+
+summary(itemlevel_model)
+```
+
+#### Odds Ratios, Type-III Tests, and Contrasts
+```{r itemlevel-inference-1}
+# Odds ratios for fixed effects (Wald CIs).
+itemlevel_or <- exp(cbind(
+  OR = fixef(itemlevel_model),
+  confint(itemlevel_model, parm = "beta_", method = "Wald")
+))
+itemlevel_or
+
+# Type-III tests (matches the early/late analysis convention).
+itemlevel_anova <- car::Anova(itemlevel_model, type = 3)
+itemlevel_anova
+
+# Stage contrasts overall and within each label, on the response scale.
+itemlevel_emm_stage <- emmeans(itemlevel_model, pairwise ~ Stage, type = "response")
+itemlevel_emm_stage_label <- emmeans(itemlevel_model, pairwise ~ Stage | Label, type = "response")
+itemlevel_emm_label_stage <- emmeans(itemlevel_model, pairwise ~ Label | Stage, type = "response")
+itemlevel_emm_stage$contrasts
+itemlevel_emm_stage_label$contrasts
+itemlevel_emm_label_stage$contrasts
+```
+
+#### Export Item-Level Robustness Results
+```{r itemlevel-export-1}
+write.xlsx(
+  list(
+    Fixed_Effects = as.data.frame(summary(itemlevel_model)$coefficients),
+    Odds_Ratios = as.data.frame(itemlevel_or),
+    Type3_ANOVA = as.data.frame(itemlevel_anova),
+    Posthoc_Stage = as.data.frame(itemlevel_emm_stage$contrasts),
+    Posthoc_Stage_by_Label = as.data.frame(itemlevel_emm_stage_label$contrasts)
+  ),
+  file = "results/H1/H1_Performance_ItemLevel_Binomial_GLMM.xlsx",
+  rowNames = TRUE
+)
+```
+
+## H1 Sensitivity: Manipulation Passers Only
+
+Not every participant correctly recalled their assigned label. Because
+source attribution is the manipulation, we refit the primary H1 model
+(without the task factor) on participants who passed the check (assigned
+`Label` == recalled label). If the Phase × Label pattern holds, the
+conclusion is not driven by participants who misremembered their condition.
+
+### Restrict to Passers
+```{r passers-data-1}
+# Passer = recalled label matches assigned label (Passed_Check == 1 in mc_df).
+passer_ids <- mc_df %>%
+  filter(Passed_Check == 1) %>%
+  pull(ID) %>%
+  as.character() %>%
+  unique()
+
+performance_long_pass <- performance_long %>%
+  filter(as.character(ID) %in% passer_ids) %>%
+  droplevels()
+
+cat("Passers retained:", dplyr::n_distinct(performance_long_pass$ID),
+    "of", dplyr::n_distinct(performance_long$ID), "participants\n")
+print(performance_long_pass %>%
+  group_by(Phase, Label) %>%
+  summarise(Mean = round(mean(Value, na.rm = TRUE), 2),
+            SD = round(sd(Value, na.rm = TRUE), 2),
+            N = dplyr::n(), .groups = "drop"))
+```
+
+### Mixed Model (Without Task, Passers Only)
+```{r passers-model-1}
+model_pass <- lmer(
+  Value ~ Phase * Label + (1 | ID) + (1 | Task) + (1 | ID:Task),
+  data = performance_long_pass
+)
+
+model_pass_summary <- summary(model_pass)$coefficients
+anova_pass <- anova(model_pass)
+eta_pass <- effectsize::eta_squared(model_pass, partial = TRUE)
+
+model_pass_summary
+anova_pass
+eta_pass
+```
+
+#### Post-hoc Comparisons (Passers Only)
+```{r passers-posthoc-1}
+posthoc_stage_pass <- emmeans(model_pass, pairwise ~ Phase)
+posthoc_label_pass <- emmeans(model_pass, pairwise ~ Label)
+posthoc_stage_label_pass <- emmeans(model_pass, pairwise ~ Phase | Label)
+posthoc_label_stage_pass <- emmeans(model_pass, pairwise ~ Label | Phase)
+
+cat("===Stage===\n")
+posthoc_stage_pass$contrasts
+cat("\n===Label===\n")
+posthoc_label_pass$contrasts
+cat("\n===Stage:Label===\n")
+posthoc_stage_label_pass$contrasts
+cat("\n===Label:Stage===\n")
+posthoc_label_stage_pass$contrasts
+
+cat("\n===Cohen's d: Stage===\n")
+print(eff_size(posthoc_stage_pass, sigma = sigma(model_pass), edf = df.residual(model_pass)))
+cat("\n===Cohen's d: Label===\n")
+print(eff_size(posthoc_label_pass, sigma = sigma(model_pass), edf = df.residual(model_pass)))
+```
+
+#### Report and Export Results (Passers Only)
+```{r passers-export-1}
+report(anova_pass)
+
+write.xlsx(
+  list(
+    Model_Summary = as.data.frame(model_pass_summary),
+    ANOVA = as.data.frame(anova_pass),
+    Eta_Squared = as.data.frame(eta_pass),
+    Posthoc_Stage = as.data.frame(posthoc_stage_pass$contrasts),
+    Posthoc_Label = as.data.frame(posthoc_label_pass$contrasts),
+    Posthoc_Stage_Label = as.data.frame(posthoc_stage_label_pass$contrasts),
+    Posthoc_Label_Stage = as.data.frame(posthoc_label_stage_pass$contrasts)
+  ),
+  file = "results/H1/H1_Performance_Comparison_LMM_PassersOnly.xlsx",
+  rowNames = TRUE
+)
+```
+
+## H1 Sensitivity: Perceived Label (As-Recalled Condition)
+
+Complementary to the passers-only analysis, this keeps the **full sample**
+but replaces the assigned `Label` with the **perceived label** each
+participant recalled (`Recalled_Label`) — the more proximal cause if the
+manipulation operates through what participants *believe* they received.
+Passers enter under their assigned label, non-passers under the one they
+believed. The primary H1 structure (without the task factor) is otherwise
+unchanged.
+
+### Attach Perceived Label
+```{r perceived-data-1}
+perceived_lk <- mc_df %>%
+  transmute(ID = as.character(ID), PerceivedLabel = Recalled_Label)
+
+performance_long_perc <- performance_long %>%
+  mutate(ID = as.character(ID)) %>%
+  left_join(perceived_lk, by = "ID") %>%
+  filter(!is.na(PerceivedLabel)) %>%
+  mutate(
+    PerceivedLabel = factor(PerceivedLabel, levels = c("AI", "AI Human", "Human")),
+    ID = factor(ID)
+  ) %>%
+  droplevels()
+
+cat("Participants with a recalled label:",
+    dplyr::n_distinct(performance_long_perc$ID),
+    "of", dplyr::n_distinct(performance_long$ID), "\n")
+print(performance_long_perc %>%
+  group_by(Phase, PerceivedLabel) %>%
+  summarise(Mean = round(mean(Value, na.rm = TRUE), 2),
+            SD = round(sd(Value, na.rm = TRUE), 2),
+            N = dplyr::n(), .groups = "drop"))
+```
+
+### Mixed Model (Without Task, Perceived Label)
+```{r perceived-model-1}
+model_perc <- lmer(
+  Value ~ Phase * PerceivedLabel + (1 | ID) + (1 | Task) + (1 | ID:Task),
+  data = performance_long_perc
+)
+
+model_perc_summary <- summary(model_perc)$coefficients
+anova_perc <- anova(model_perc)
+eta_perc <- effectsize::eta_squared(model_perc, partial = TRUE)
+
+model_perc_summary
+anova_perc
+eta_perc
+```
+
+#### Post-hoc Comparisons (Perceived Label)
+```{r perceived-posthoc-1}
+posthoc_stage_perc <- emmeans(model_perc, pairwise ~ Phase)
+posthoc_label_perc <- emmeans(model_perc, pairwise ~ PerceivedLabel)
+posthoc_stage_label_perc <- emmeans(model_perc, pairwise ~ Phase | PerceivedLabel)
+posthoc_label_stage_perc <- emmeans(model_perc, pairwise ~ PerceivedLabel | Phase)
+
+cat("===Stage===\n")
+posthoc_stage_perc$contrasts
+cat("\n===Perceived Label===\n")
+posthoc_label_perc$contrasts
+cat("\n===Stage:Perceived Label===\n")
+posthoc_stage_label_perc$contrasts
+cat("\n===Perceived Label:Stage===\n")
+posthoc_label_stage_perc$contrasts
+
+cat("\n===Cohen's d: Stage===\n")
+print(eff_size(posthoc_stage_perc, sigma = sigma(model_perc), edf = df.residual(model_perc)))
+cat("\n===Cohen's d: Perceived Label===\n")
+print(eff_size(posthoc_label_perc, sigma = sigma(model_perc), edf = df.residual(model_perc)))
+```
+
+#### Report and Export Results (Perceived Label)
+```{r perceived-export-1}
+report(anova_perc)
+
+write.xlsx(
+  list(
+    Model_Summary = as.data.frame(model_perc_summary),
+    ANOVA = as.data.frame(anova_perc),
+    Eta_Squared = as.data.frame(eta_perc),
+    Posthoc_Stage = as.data.frame(posthoc_stage_perc$contrasts),
+    Posthoc_Label = as.data.frame(posthoc_label_perc$contrasts),
+    Posthoc_Stage_Label = as.data.frame(posthoc_stage_label_perc$contrasts),
+    Posthoc_Label_Stage = as.data.frame(posthoc_label_stage_perc$contrasts)
+  ),
+  file = "results/H1/H1_Performance_Comparison_LMM_PerceivedLabel.xlsx",
+  rowNames = TRUE
+)
+```
+
+## H2: Confidence, Willingness, Usefulness, Attitude Change, and Post-Survey Experience
+
+H2 examines self-reported confidence, willingness to use AI, and
+perceived usefulness across stages; change in AI attitudes from Pre to
+Post; and the post-survey experience measures (perceived learning,
+satisfaction, and sign-up behaviour).
+
+### Confidence, Willingness, and Usefulness
+#### Recode for Modeling
+```{r recode-for-modeling-1}
+df_long <- df_long %>%
+  dplyr::mutate(
+    Phase = factor(Phase, levels = c("Post", "stage3", "stage2", "stage1", "Pre")),
+    Task = factor(task),
+    Label = factor(Label),
+    ID = factor(ID)
+  ) %>%
+  dplyr::select(-task)
+```
+
+#### Fit Models
+```{r fit-models-1}
+measures <- c("confidence", "willing", "useful")
+result_list <- list()
+
+# One Phase x Label LMM per self-report measure, with full post-hoc + descriptives.
+for (var in measures) {
+  cat(paste0("\n===", var, "===\n"))
+
+  df_sub <- df_long %>%
+    filter(
+      measure == var,
+      Task != "task0"
+    )
+
+  model <- lmer(
+    Value ~ Phase * Label + (1 | ID) + (1 | Task) + (1 | ID:Task),
+    data = df_sub
+  )
+
+  anova_res <- anova(model)
+  print(anova_res)
+  ANOVA <- as.data.frame(anova_res) %>%
+    tibble::rownames_to_column("Variable")
+
+  eta_sq <- effectsize::eta_squared(model, partial = TRUE)
+  print(eta_sq)
+
+  coef_tbl <- as.data.frame(summary(model)$coefficients) %>%
+    tibble::rownames_to_column("Variable")
+
+  posthoc_stage <- emmeans(model, pairwise ~ Phase)
+  cat("\n===t-test: Stage===\n")
+  print(posthoc_stage$contrasts)
+  effsize_stage <- eff_size(posthoc_stage, sigma = sigma(model), edf = df.residual(model))
+  cat("\n===Cohen's d: Stage===\n")
+  print(effsize_stage)
+
+  posthoc_label <- emmeans(model, pairwise ~ Label)
+  cat("\n===t-test: Label===\n")
+  print(posthoc_label$contrasts)
+  effsize_label <- eff_size(posthoc_label, sigma = sigma(model), edf = df.residual(model))
+  cat("\n===Cohen's d: Label===\n")
+  print(effsize_label)
+
+  posthoc_stage_label <- emmeans(model, pairwise ~ Phase | Label)
+  cat("\n===t-test: Phase | Label===\n")
+  print(posthoc_stage_label$contrasts)
+  effsize_pl <- eff_size(
+    posthoc_stage_label,
+    sigma = sigma(model),
+    edf = df.residual(model)
+  )
+  cat("\n===Cohen's d: Phase | Label===\n")
+  print(effsize_pl)
+
+  posthoc_label_stage <- emmeans(model, pairwise ~ Label | Phase)
+  cat("\n===t-test: Label | Phase===\n")
+  print(posthoc_label_stage$contrasts)
+  effsize_lp <- eff_size(posthoc_label_stage, sigma = sigma(model), edf = df.residual(model))
+  cat("\n===Cohen's d: Label | Phase===\n")
+  print(effsize_lp)
+
+  means_by_label <- df_sub %>%
+    group_by(Label) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_stage <- df_sub %>%
+    group_by(Phase) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_task <- df_sub %>%
+    group_by(Task) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_label_stage <- df_sub %>%
+    group_by(Phase, Label) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_stage_task <- df_sub %>%
+    group_by(Phase, Task) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_task_label <- df_sub %>%
+    group_by(Task, Label) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  means_by_stage_task_label <- df_sub %>%
+    group_by(Phase, Task, Label) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = sum(!is.na(Value)),
+      .groups = "drop"
+    )
+
+  result_list[[var]] <- list(
+    Model_Summary = coef_tbl,
+    ANOVA = ANOVA,
+    Eta_Squared = as.data.frame(eta_sq),
+    M_Label = means_by_label,
+    M_Stage = means_by_stage,
+    M_Task = means_by_task,
+    M_Label_Stage = means_by_label_stage,
+    M_Stage_Task = means_by_stage_task,
+    M_Task_Label = means_by_task_label,
+    M_Stage_Task_Label = means_by_stage_task_label,
+    Posthoc_Stage = as.data.frame(posthoc_stage$contrasts),
+    Posthoc_Label = as.data.frame(posthoc_label$contrasts),
+    Posthoc_Stage_Label = as.data.frame(posthoc_stage_label$contrasts),
+    Posthoc_Label_Stage = as.data.frame(posthoc_label_stage$contrasts)
+  )
+}
+```
+
+#### Export Results
+```{r export-results-1}
+flat_result_list <- list()
+
+sanitize_excel_sheet_name <- function(x) {
+  if (length(x) != 1L || is.na(x)) {
+    stop("Worksheet name must be one non-missing string")
+  }
+  for (invalid_character in c("\\", "/", ":", "*", "?", "[", "]", " ")) {
+    x <- gsub(invalid_character, "_", x, fixed = TRUE)
+  }
+  x <- sub("^'", "_", x)
+  x <- sub("'$", "_", x)
+  if (!nzchar(x)) x <- "Sheet"
+  substr(x, 1L, 31L)
+}
+
+append_excel_sheet <- function(sheets, raw_name, value) {
+  base_name <- sanitize_excel_sheet_name(raw_name)
+  used_names <- tolower(names(sheets))
+  candidate <- base_name
+  suffix_number <- 2L
+  while (tolower(candidate) %in% used_names) {
+    suffix <- paste0("_", suffix_number)
+    candidate <- paste0(
+      substr(base_name, 1L, 31L - nchar(suffix)), suffix
+    )
+    suffix_number <- suffix_number + 1L
+  }
+  sheets[length(sheets) + 1L] <- list(value)
+  names(sheets)[length(sheets)] <- candidate
+  sheets
+}
+
+for (name in names(result_list)) {
+  for (subname in names(result_list[[name]])) {
+    tab <- result_list[[name]][[subname]]
+    if (is.data.frame(tab)) {
+      sheet_name <- paste(name, subname, sep = "_")
+      flat_result_list <- append_excel_sheet(flat_result_list, sheet_name, tab)
+    }
+  }
+}
+
+write.xlsx(
+  flat_result_list,
+  file = "results/H2/H2_Within_Task_Attitude_Perceptions.xlsx"
+)
+```
+
+### Attitude Change Over Time
+```{r attitude-change-over-time-1}
+measures <- c("AI_Trust", "AI_Usefulness", "AI_Affect", "Behavioral_Intention")
+
+change_stats <- list()
+anova_results <- list()
+eta_squared_results <- list()
+posthoc_results <- list()
+posthoc_results_PL <- list()
+posthoc_results_LP <- list()
+```
+
+#### Compute Change Scores, Fit Mixed Models
+```{r compute-change-scores-fit-mixed-models-1}
+# Pre->Post change per attitude measure: descriptives, change score, and a
+# Phase x Label LMM with post-hoc contrasts.
+for (msr in measures) {
+  cat(paste0("\n===", msr, "===\n"))
+
+  d_sub <- df_long %>%
+    filter(measure == msr, Phase %in% c("Pre", "Post"))
+
+  stat_tab_0 <- d_sub %>%
+    dplyr::select(ID, Label, Phase, Value, measure) %>%
+    group_by(Label, Phase, measure) %>%
+    summarise(
+      Mean = round(mean(Value, na.rm = TRUE), 2),
+      SD = round(sd(Value, na.rm = TRUE), 2),
+      N = n(),
+      .groups = "drop"
+    )
+
+  d_wide <- d_sub %>%
+    dplyr::select(ID, Label, Phase, Value) %>%
+    pivot_wider(names_from = Phase, values_from = Value) %>%
+    mutate(change = Post - Pre)
+
+  stat_tab <- d_wide %>%
+    group_by(Label) %>%
+    summarise(
+      MeanChange = round(mean(change, na.rm = TRUE), 2),
+      SD = round(sd(change, na.rm = TRUE), 2),
+      N = n(),
+      .groups = "drop"
+    ) %>%
+    mutate(Measure = msr) %>%
+    relocate(Measure)
+
+  change_stats[[msr]] <- stat_tab
+
+  d_mod <- d_sub %>%
+    filter(!is.na(Value)) %>%
+    mutate(
+      Phase = factor(Phase, levels = c("Post", "Pre")),
+      Phase = relevel(as.factor(Phase), ref = "Post")
+    )
+
+  if (nrow(d_mod) > 0) {
+    model <- lmer(Value ~ Phase * Label + (1 | ID), data = d_mod)
+
+    aov_tab <- anova(model)
+    print(aov_tab)
+
+    eta <- eta_squared(model, partial = TRUE)
+    print(eta)
+    cat("\n")
+
+    posthoc <- emmeans(model, pairwise ~ Phase)
+    cat("\n===t-test: Phase===\n")
+    print(posthoc$contrasts)
+    cat("\n===Cohen's d: Phase===\n")
+    print(eff_size(posthoc, sigma = sigma(model), edf = df.residual(model)))
+
+    posthoc_PL <- emmeans(model, pairwise ~ Phase | Label)
+    cat("\n===t-test: Phase | Label===\n")
+    print(posthoc_PL$contrasts)
+    cat("\n===Cohen's d: Phase | Label===\n")
+    print(eff_size(posthoc_PL, sigma = sigma(model), edf = df.residual(model)))
+
+    posthoc_LP <- emmeans(model, pairwise ~ Label | Phase)
+    cat("\n===t-test: Label | Phase===\n")
+    print(posthoc_LP$contrasts)
+    cat("\n===Cohen's d: Label | Phase===\n")
+    print(eff_size(posthoc_LP, sigma = sigma(model), edf = df.residual(model)))
+
+    anova_results[[msr]] <- as.data.frame(aov_tab) %>%
+      tibble::rownames_to_column("Effect") %>%
+      mutate(Measure = msr, .before = 1)
+
+    eta_squared_results[[msr]] <- as.data.frame(eta) %>%
+      mutate(Measure = msr, .before = 1)
+
+    posthoc_results[[msr]] <- as.data.frame(posthoc$contrasts) %>%
+      mutate(Measure = msr, .before = 1)
+
+    posthoc_results_PL[[msr]] <- as.data.frame(posthoc_PL$contrasts) %>%
+      mutate(Measure = msr, .before = 1)
+
+    posthoc_results_LP[[msr]] <- as.data.frame(posthoc_LP$contrasts) %>%
+      mutate(Measure = msr, .before = 1)
+  }
+}
+```
+
+#### Export Results
+```{r export-results-2}
+final_output_list <- list(
+  ChangeScore_Summary   = bind_rows(change_stats),
+  ANOVA_Results         = bind_rows(anova_results),
+  Eta_Squared_Results   = bind_rows(eta_squared_results),
+  Posthoc_Results       = bind_rows(posthoc_results),
+  Posthoc_PL_Results    = bind_rows(posthoc_results_PL),
+  Posthoc_LP_Results    = bind_rows(posthoc_results_LP)
+)
+
+write.xlsx(
+  final_output_list,
+  file = "results/H2/H2_Attitude_Change_Immediate_Results.xlsx",
+  overwrite = TRUE
+)
+```
+
+### Post-Survey Experience & Sign-Up
+#### Perceived Learning
+```{r perceived-learning-1}
+anova_learning <- aov(Stats_Improvement ~ Label, data = df)
+
+means_learning <- df %>%
+  group_by(Label) %>%
+  summarise(
+    Mean = round(mean(Stats_Improvement, na.rm = TRUE), 2),
+    SD = round(sd(Stats_Improvement, na.rm = TRUE), 2),
+    N = n(),
+    .groups = "drop"
+  )
+
+eta2 <- etaSquared(anova_learning, type = 2)
+
+posthoc_learning <- as.data.frame(
+  emmeans(anova_learning, pairwise ~ Label)$contrasts
+)
+
+print(anova_learning)
+print(eta2)
+print(posthoc_learning)
+```
+
+#### Satisfaction
+```{r satisfaction-1}
+df$Satisfaction <- as.ordered(df$Satisfaction)
+satis_model <- MASS::polr(Satisfaction ~ Label, data = df, Hess = TRUE)
+
+summary(satis_model)
+
+satis_aov <- Anova(satis_model)
+print(satis_aov)
+
+emmeans_satis <- emmeans(satis_model, pairwise ~ Label)
+posthoc_satis <- as.data.frame(emmeans_satis$contrasts)
+
+means_satis <- df %>%
+  group_by(Label) %>%
+  summarise(
+    Mean = round(mean(as.numeric(Satisfaction), na.rm = TRUE), 2),
+    SD = round(sd(as.numeric(Satisfaction), na.rm = TRUE), 2),
+    Median = median(as.numeric(Satisfaction), na.rm = TRUE),
+    N = n(),
+    .groups = "drop"
+  )
+```
+
+#### Sign-Up Behavior
+```{r sign-up-behavior-1}
+logit_model <- glm(Sign_Up ~ Label, data = df, family = binomial)
+
+summary(logit_model)
+
+odds_ci <- exp(cbind(OR = coef(logit_model), confint(logit_model)))
+
+table_signup <- table(df$Label, df$Sign_Up)
+chisq_test <- chisq.test(table_signup)
+
+print(chisq_test)
+
+cramers_v <- sqrt(
+  chisq_test$statistic / (sum(table_signup) * (min(dim(table_signup)) - 1))
+)
+```
+
+#### Export Results
+```{r export-results-3}
+write.xlsx(
+  list(
+    Learning_ANOVA        = as.data.frame(summary(anova_learning)[[1]]),
+    Learning_Means        = means_learning,
+    Learning_Eta2         = as.data.frame(eta2),
+    Learning_Posthoc      = posthoc_learning,
+    Satisfaction_Means    = means_satis,
+    Satisfaction_Model    = tidy(satis_model),
+    Satisfaction_Posthoc  = posthoc_satis,
+    SignUp_Table          = as.data.frame(table_signup),
+    SignUp_Logit_Summary  = tidy(logit_model),
+    SignUp_Odds_CI        = as.data.frame(odds_ci),
+    SignUp_ChiSq          = tidy(chisq_test),
+    SignUp_CramersV       = data.frame(CramersV = as.numeric(cramers_v))
+  ),
+  file = "results/H2/Post_Survey_Experience.xlsx",
+  rowNames = TRUE
+)
+```
+
+## H3: Moderation of Initial-Session Outcomes
+
+H3 screens whether individual-difference measures (objective/subjective
+literacy, AI attitudes, statistics background, and LLM usage) moderate
+the initial-session effects on performance/confidence/willingness/
+usefulness and on attitude change (Pre → Post). Significant terms are
+summarised per outcome.
+
+### Accuracy, Confidence, Willingness, and Usefulness Moderation
+```{r accuracy-confidence-willingness-and-usefulness-moderation-1}
+moderators_raw <- c(
+  "GLAT_Objective_AI_Literacy",
+  "AILS_CCS_Subjective_AI_Literacy",
+  "AI_Trust",
+  "AI_Usefulness",
+  "AI_Affect",
+  "AI_Self_Efficacy",
+  "Behavioral_Intention"
+)
+
+outcomes <- c("accuracy", "confidence", "willing", "useful")
+
+df_mods <- df_long %>%
+  filter(tolower(Phase) == "pre", measure %in% moderators_raw) %>%
+  dplyr::select(ID, measure, Value) %>%
+  pivot_wider(names_from = measure, names_prefix = "pre_", values_from = Value)
+
+df_wide <- df_long %>%
+  filter(measure %in% outcomes) %>%
+  left_join(df_mods, by = "ID") %>%
+  mutate(
+    Stage = as.factor(Phase),
+    Task  = as.factor(Task),
+    Label = as.factor(Label),
+    ID    = as.factor(ID)
+  ) %>%
+  dplyr::select(-Phase)
+```
+
+```{r accuracy-confidence-willingness-and-usefulness-moderation-2}
+moderators <- c(
+  "pre_GLAT_Objective_AI_Literacy",
+  "pre_AILS_CCS_Subjective_AI_Literacy",
+  "pre_AI_Trust",
+  "pre_AI_Usefulness",
+  "pre_AI_Affect",
+  "pre_AI_Self_Efficacy",
+  "pre_Behavioral_Intention",
+  "Stats_Background",
+  "Used_LLM_Frequency",
+  "Used_LLM_Hours"
+)
+
+categorical_mods <- c("Stats_Background", "Used_LLM_Frequency", "Used_LLM_Hours")
+
+result_list <- list()
+```
+
+#### Fit Mixed Models + ANOVA + Eta + Coefs + Post-hoc (Conditional)
+```{r fit-mixed-models-anova-eta-coefs-1}
+# Loop over every outcome x moderator pair; fit a 3-way moderation LMM each.
+for (outcome in outcomes) {
+  for (mod in moderators) {
+    # Mean-center continuous (pre_) moderators so main effects stay interpretable.
+    if (grepl("^pre_", mod)) {
+      df_wide[[mod]] <- scale(df_wide[[mod]], scale = FALSE)
+    }
+
+    # This outcome only; drop baseline task0 and rows missing the moderator.
+    df_task0 <- df_wide %>%
+      filter(
+        measure == outcome,
+        Task != "task0",
+        !is.na(.data[[mod]])
+      )
+
+    if (nrow(df_task0) == 0) next
+
+    # Stage x Label x moderator, crossed ID/Task random effects.
+    formula0 <- as.formula(
+      paste0("Value ~ Stage * Label * ", mod, " + (1|ID) + (1|Task) + (1|ID:Task)")
+    )
+
+    model0 <- lmer(formula0, data = df_task0)
+
+    anova0 <- anova(model0)
+    cat(paste0("\n===", outcome, "+", mod, "===\n"))
+    print(anova0)
+    # Move term names into a column so they survive the xlsx export.
+    ANOVA <- as.data.frame(anova0)
+    ANOVA$Variable <- rownames(ANOVA)
+    ANOVA <- ANOVA[, c("Variable", setdiff(names(ANOVA), "Variable"))]
+
+    eta0 <- as.data.frame(eta_squared(model0, partial = TRUE))
+
+    coef_tbl <- as.data.frame(summary(model0)$coefficients)
+    coef_tbl$Variable <- rownames(coef_tbl)
+    coef_tbl <- coef_tbl[, c("Variable", setdiff(names(coef_tbl), "Variable"))]
+
+    posthoc_list <- list()
+
+    # Follow up only the ANOVA terms that reached p < .05.
+    sig_terms <- rownames(ANOVA)[which(ANOVA$`Pr(>F)` < 0.05)]
+
+    for (term in sig_terms) {
+      clean_term <- gsub("[:/\\?\\*\\[\\]]", "_", term)  # sanitize for list/sheet names
+      term_vars <- unlist(strsplit(term, ":"))           # factors making up this term
+
+      # Case 1: term involves a categorical moderator -> estimated means + pairwise.
+      if (mod %in% categorical_mods && any(term_vars %in% c(mod, "ModeratorScore", mod))) {
+        by_vars <- setdiff(term_vars, c(mod, "ModeratorScore"))
+        specs <- c(mod, by_vars)
+
+        em_out <- tryCatch(
+          emmeans(model0, specs = specs),
+          error = function(e) NULL
+        )
+
+        if (!is.null(em_out)) {
+          posthoc_list[[clean_term]] <- as.data.frame(pairs(em_out))
+        }
+      } else if (!(mod %in% categorical_mods) && any(term_vars %in% c(mod, "ModeratorScore", mod))) {
+        # Case 2: term involves a continuous moderator -> simple slopes (emtrends).
+        other_facs <- setdiff(term_vars, c(mod, "ModeratorScore"))
+
+        # No other factor -> single overall slope; else slope per factor cell.
+        if (length(other_facs) == 0) {
+          specs <- ~1
+        } else {
+          specs <- as.formula(paste0("~", paste(other_facs, collapse = "*")))
+        }
+
+        et <- tryCatch(
+          emtrends(
+            model0,
+            specs = specs,
+            var = ifelse("ModeratorScore" %in% term_vars, "ModeratorScore", mod),
+            infer = c(TRUE, TRUE)
+          ),
+          error = function(e) NULL
+        )
+
+        if (!is.null(et)) {
+          posthoc_list[[paste0(clean_term, "_trends")]] <-
+            as.data.frame(summary(et, infer = c(TRUE, TRUE)))
+
+          # Slopes differ across factor cells -> also test slope differences.
+          if (length(other_facs) > 0) {
+            ph_pair <- tryCatch(as.data.frame(pairs(et)), error = function(e) NULL)
+            if (!is.null(ph_pair)) {
+              posthoc_list[[paste0(clean_term, "_trends_pairs")]] <- ph_pair
+            }
+          }
+        }
+      } else if (length(term_vars) > 0) {
+        # Case 3: term has no moderator (e.g. Stage:Label) -> plain pairwise.
+        em_out <- tryCatch(
+          emmeans(model0, specs = term_vars),
+          error = function(e) NULL
+        )
+
+        if (!is.null(em_out)) {
+          posthoc_list[[clean_term]] <- as.data.frame(pairs(em_out))
+        }
+      }
+    }
+
+    result_list[[paste0(outcome, "_by_", mod)]] <- list(
+      Formula      = as.character(formula0),
+      ANOVA        = ANOVA,
+      Eta_Squared  = eta0,
+      Coef_Summary = coef_tbl,
+      Posthoc      = posthoc_list
+    )
+  }
+}
+```
+
+#### Export Results
+```{r export-results-4}
+mod_abbr <- c(
+  "pre_GLAT_Objective_AI_Literacy"       = "GLAT",
+  "pre_AILS_CCS_Subjective_AI_Literacy"  = "AILSCCS",
+  "pre_AI_Trust"                         = "Trust",
+  "pre_AI_Usefulness"                    = "Useful",
+  "pre_AI_Affect"                        = "Affect",
+  "pre_AI_Self_Efficacy"                 = "SelfEff",
+  "pre_Behavioral_Intention"             = "BehInt",
+  "Stats_Background"                     = "StatsBG",
+  "Used_LLM_Frequency"                   = "LLMFreq",
+  "Used_LLM_Hours"                       = "LLMHr"
+)
+
+flat_result_list <- list()
+
+# Flatten the nested result_list into one sheet per table, with short names
+# (Excel caps sheet names at 31 chars).
+for (nm in names(result_list)) {
+  key_base <- strsplit(nm, "_")[[1]]
+  outcome_letter <- substr(key_base[1], 1, 1)  # outcome -> single letter
+
+  # Rebuild the moderator name (it spans key_base[4:]) and abbreviate it.
+  moderator <- paste(key_base[4:length(key_base)], collapse = "_")
+  mod_short <- ifelse(
+    moderator %in% names(mod_abbr),
+    mod_abbr[[moderator]],
+    substr(moderator, 1, 8)
+  )
+
+  prefix <- paste(outcome_letter, mod_short, sep = "_")
+
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_ANOVA"), result_list[[nm]]$ANOVA
+  )
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_EtaSq"), result_list[[nm]]$Eta_Squared
+  )
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_Coef"), result_list[[nm]]$Coef_Summary
+  )
+
+  # One extra sheet per non-empty post-hoc table.
+  if (!is.null(result_list[[nm]]$Posthoc)) {
+    for (int_type in names(result_list[[nm]]$Posthoc)) {
+      ph <- result_list[[nm]]$Posthoc[[int_type]]
+      if (!is.null(ph) && is.data.frame(ph) && nrow(ph) > 0) {
+        flat_result_list <- append_excel_sheet(
+          flat_result_list, paste0(prefix, "_PH_", int_type), ph
+        )
+      }
+    }
+  }
+}
+
+write.xlsx(
+  flat_result_list,
+  file = "results/H3/H3_Within_Task_Moderation_ALL_Posthoc.xlsx"
+)
+```
+
+#### Export Significant Effects Summary
+```{r export-significant-effects-summary-1}
+# Collapse every model's ANOVA into one flat summary table and write it out.
+export_sig_effects <- function(
+  result_list,
+  out_excel_path
+) {
+  if (!dir.exists(dirname(out_excel_path))) {
+    dir.create(dirname(out_excel_path), recursive = TRUE)
+  }
+
+  summary_sig_effects <- data.frame(
+    DV = character(),
+    Moderator = character(),
+    Term = character(),
+    NumDF = numeric(),
+    DenDF = numeric(),
+    F_value = numeric(),
+    p_value = numeric(),
+    eta_p = numeric(),
+    stringsAsFactors = FALSE
+  )
+
+  for (res_name in names(result_list)) {
+    split_name <- unlist(strsplit(res_name, "_by_"))
+    DV <- split_name[1]
+    Moderator <- split_name[2]
+
+    ANOVA <- result_list[[res_name]]$ANOVA
+    Eta <- result_list[[res_name]]$Eta_Squared
+
+    if (is.null(ANOVA)) next
+    if (!all(c("Pr(>F)", "F value") %in% names(ANOVA))) next
+
+    # Keep every term: the p-value adjudication step builds the correction
+    # family downstream and needs all focal interactions, significant or not.
+    sig_rows <- which(ANOVA$`Pr(>F)` <= 1)
+    if (length(sig_rows) == 0) next
+
+    for (i in sig_rows) {
+      this_term <- ANOVA$Variable[i]
+      Ndf <- ANOVA$NumDF[i]
+      Ddf <- ANOVA$DenDF[i]
+      Fval <- ANOVA$`F value`[i]
+      pval <- ANOVA$`Pr(>F)`[i]
+
+      eta_val <- NA
+      if (!is.null(Eta) && "Parameter" %in% names(Eta)) {
+        eta_row <- Eta[Eta$Parameter == this_term, , drop = FALSE]
+        if (nrow(eta_row) == 1) {
+          if ("Eta2_partial" %in% names(eta_row)) eta_val <- eta_row$Eta2_partial
+          if ("Eta2" %in% names(eta_row) && is.na(eta_val)) eta_val <- eta_row$Eta2
+        }
+      }
+
+      summary_sig_effects <- rbind(
+        summary_sig_effects,
+        data.frame(
+          DV = DV,
+          Moderator = Moderator,
+          Term = this_term,
+          NumDF = Ndf,
+          DenDF = Ddf,
+          F_value = Fval,
+          p_value = pval,
+          eta_p = eta_val,
+          stringsAsFactors = FALSE
+        )
+      )
+    }
+  }
+
+  summary_sig_effects <- summary_sig_effects %>%
+    arrange(DV, Moderator, p_value)
+
+  write.xlsx(summary_sig_effects, file = out_excel_path, rowNames = FALSE)
+
+  cat(sprintf("Significant terms summary saved to %s\n", out_excel_path))
+
+  invisible(summary_sig_effects)
+}
+```
+
+```{r export-significant-effects-summary-2}
+export_sig_effects(
+  result_list,
+  out_excel_path = "results/H3/H3_Within_Task_Moderation_Summary.xlsx"
+)
+```
+
+### Attitude Change Immediate Moderation
+```{r attitude-change-immediate-moderation-1}
+outcomes <- c("AI_Trust", "AI_Usefulness", "AI_Affect", "Behavioral_Intention")
+
+moderators <- c(
+  "GLAT_Objective_AI_Literacy",
+  "AILS_CCS_Subjective_AI_Literacy",
+  "AI_Trust",
+  "AI_Usefulness",
+  "AI_Affect",
+  "AI_Self_Efficacy",
+  "Behavioral_Intention",
+  "Stats_Background",
+  "Used_LLM_Frequency",
+  "Used_LLM_Hours"
+)
+
+categorical_mods <- c("Stats_Background", "Used_LLM_Frequency", "Used_LLM_Hours")
+
+result_list <- list()
+```
+
+#### Fit Models for Attitude Change (Pre/Post) with Moderation + Post-hoc
+```{r fit-models-for-attitude-change-pre-1}
+for (outcome in outcomes) {
+  for (mod in moderators) {
+    df_sub <- df_long %>%
+      filter(measure == outcome, Phase %in% c("Pre", "Post"))
+
+    if (nrow(df_sub) == 0) next
+
+    df_sub <- df_sub %>%
+      mutate(
+        Phase = factor(Phase, levels = c("Pre", "Post")),
+        Label = as.factor(Label),
+        ID    = as.factor(ID)
+      )
+
+    posthoc_list <- list()
+
+    # Three ways to bring in the moderator, depending on what it is:
+    if (mod == outcome) {
+      # (a) Moderator IS the outcome -> can't moderate itself; instead control
+      #     for its own Pre score as a baseline covariate (no interaction).
+      baseline_df <- df_sub %>%
+        filter(Phase == "Pre") %>%
+        dplyr::select(ID, BaselineScore = Value)
+
+      df_sub <- df_sub %>%
+        left_join(baseline_df, by = "ID") %>%
+        mutate(BaselineScore = scale(BaselineScore, scale = FALSE))
+
+      formula_str <- "Value ~ Phase * Label + BaselineScore + (1|ID)"
+      model <- lmer(as.formula(formula_str), data = df_sub)
+    } else if (mod %in% df_long$measure) {
+      # (b) Moderator is another measured scale -> attach its Pre score (centered).
+      mod_df <- df_long %>%
+        filter(Phase == "Pre", measure == mod) %>%
+        dplyr::select(ID, ModeratorScore = Value)
+
+      df_sub <- df_sub %>%
+        left_join(mod_df, by = "ID") %>%
+        mutate(ModeratorScore = scale(ModeratorScore, scale = FALSE))
+
+      formula_str <- "Value ~ Phase * Label * ModeratorScore + (1|ID)"
+      model <- lmer(as.formula(formula_str), data = df_sub)
+    } else {
+      # (c) Moderator is a fixed demographic column -> use it as-is.
+      df_sub <- df_sub %>%
+        mutate(ModeratorScore = .data[[mod]])
+
+      formula_str <- "Value ~ Phase * Label * ModeratorScore + (1|ID)"
+      model <- lmer(as.formula(formula_str), data = df_sub)
+    }
+
+    anova_res <- anova(model)
+    cat(paste0("\n===", outcome, "+", mod, "===\n"))
+    print(anova_res)
+    ANOVA <- as.data.frame(anova_res)
+    ANOVA$Variable <- rownames(ANOVA)
+    ANOVA <- ANOVA[, c("Variable", setdiff(names(ANOVA), "Variable"))]
+
+    eta_sq <- effectsize::eta_squared(model, partial = TRUE)
+
+    coef_tbl <- as.data.frame(summary(model)$coefficients)
+    coef_tbl$Variable <- rownames(coef_tbl)
+    coef_tbl <- coef_tbl[, c("Variable", setdiff(names(coef_tbl), "Variable"))]
+
+    sig_terms <- rownames(ANOVA)[which(ANOVA$`Pr(>F)` < 0.05)]
+
+    for (term in sig_terms) {
+      clean_term <- gsub("[:/\\?\\*\\[\\]]", "_", term)   # sanitize for list names
+      term_vars <- unlist(strsplit(term, ":"))            # factors in this term
+      left_facs <- setdiff(term_vars, c(mod, "ModeratorScore"))  # the non-moderator ones
+
+      # Case 1: categorical moderator -> Label contrasts within moderator levels.
+      if (mod %in% categorical_mods && any(term_vars %in% c(mod, "ModeratorScore", mod))) {
+        ph_em <- tryCatch(
+          emmeans(model, pairwise ~ Label | ModeratorScore),
+          error = function(e) NULL
+        )
+
+        if (!is.null(ph_em)) {
+          posthoc_list[[clean_term]] <- as.data.frame(ph_em$contrasts)
+        }
+      } else if (!(mod %in% categorical_mods) && any(term_vars %in% c(mod, "ModeratorScore", mod))) {
+        # Case 2: continuous moderator -> simple slopes, per factor cell if any.
+        if (length(left_facs) == 0) {
+          specs <- ~1
+        } else {
+          specs <- as.formula(paste0("~", paste(left_facs, collapse = "*")))
+        }
+
+        et <- tryCatch(
+          emtrends(
+            model,
+            specs = specs,
+            var = ifelse("ModeratorScore" %in% term_vars, "ModeratorScore", mod),
+            infer = c(TRUE, TRUE)
+          ),
+          error = function(e) NULL
+        )
+
+        if (!is.null(et)) {
+          posthoc_list[[paste0(clean_term, "_trends")]] <-
+            as.data.frame(summary(et, infer = c(TRUE, TRUE)))
+
+          # Also test whether slopes differ across the factor cells.
+          if (length(left_facs) > 0) {
+            ph_pair <- tryCatch(as.data.frame(pairs(et)), error = function(e) NULL)
+            if (!is.null(ph_pair)) {
+              posthoc_list[[paste0(clean_term, "_trends_pairs")]] <- ph_pair
+            }
+          }
+        }
+      } else if (length(term_vars) > 1) {
+        # Case 3a: multi-factor term without moderator (e.g. Phase:Label) -> pairwise.
+        em_formula <- as.formula(paste0("~", paste(term_vars, collapse = " * ")))
+        em_out <- tryCatch(emmeans(model, em_formula), error = function(e) NULL)
+
+        if (!is.null(em_out)) {
+          posthoc_list[[clean_term]] <- as.data.frame(pairs(em_out))
+        }
+      } else if (length(term_vars) == 1) {
+        # Case 3b: single-factor main effect -> pairwise on that factor.
+        em_formula <- as.formula(paste0("~", term))
+        em_out <- tryCatch(emmeans(model, em_formula), error = function(e) NULL)
+
+        if (!is.null(em_out)) {
+          posthoc_list[[clean_term]] <- as.data.frame(pairs(em_out))
+        }
+      }
+    }
+
+    result_list[[paste0(outcome, "_by_", mod)]] <- list(
+      Formula      = formula_str,
+      ANOVA        = ANOVA,
+      Eta_Squared  = as.data.frame(eta_sq),
+      Coef_Summary = coef_tbl,
+      Posthoc      = posthoc_list
+    )
+  }
+}
+```
+
+####  Export Results
+```{r export-results-5}
+mod_abbr <- c(
+  "GLAT_Objective_AI_Literacy"          = "GLAT",
+  "AILS_CCS_Subjective_AI_Literacy"     = "AILSCCS",
+  "AI_Trust"                            = "Trust",
+  "AI_Usefulness"                       = "Useful",
+  "AI_Affect"                           = "Affect",
+  "AI_Self_Efficacy"                    = "SelfEff",
+  "Behavioral_Intention"                = "BehInt",
+  "Stats_Background"                    = "StatsBG",
+  "Used_LLM_Frequency"                  = "LLMFreq",
+  "Used_LLM_Hours"                      = "LLMHr"
+)
+
+flat_result_list <- list()
+
+for (nm in names(result_list)) {
+  key_base <- strsplit(nm, "_")[[1]]
+  outcome_short <- substr(key_base[2], 1, 5)
+
+  moderator <- paste(key_base[4:length(key_base)], collapse = "_")
+  mod_short <- ifelse(
+    moderator %in% names(mod_abbr),
+    mod_abbr[[moderator]],
+    substr(moderator, 1, 8)
+  )
+
+  prefix <- paste(outcome_short, mod_short, sep = "_")
+
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_ANOVA"), result_list[[nm]]$ANOVA
+  )
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_EtaSq"), result_list[[nm]]$Eta_Squared
+  )
+  flat_result_list <- append_excel_sheet(
+    flat_result_list, paste0(prefix, "_Coef"), result_list[[nm]]$Coef_Summary
+  )
+
+  if (!is.null(result_list[[nm]]$Posthoc)) {
+    for (int_type in names(result_list[[nm]]$Posthoc)) {
+      ph <- result_list[[nm]]$Posthoc[[int_type]]
+      if (!is.null(ph) && is.data.frame(ph) && nrow(ph) > 0) {
+        flat_result_list <- append_excel_sheet(
+          flat_result_list, paste0(prefix, "_Posthoc_", int_type), ph
+        )
+      }
+    }
+  }
+}
+
+write.xlsx(
+  flat_result_list,
+  file = "results/H3/H3_Attitude_Change_Immediate_Moderation_POSTHOC.xlsx"
+)
+```
+
+#### Export Significant Effects Summary
+```{r export-significant-effects-summary-3}
+# Same as above (keeps every term; focal filtering happens in p-value adjudication).
+export_sig_effects <- function(result_list, out_excel_path) {
+  if (!dir.exists(dirname(out_excel_path))) {
+    dir.create(dirname(out_excel_path), recursive = TRUE)
+  }
+
+  summary_sig_effects <- data.frame(
+    DV = character(),
+    Moderator = character(),
+    Term = character(),
+    NumDF = numeric(),
+    DenDF = numeric(),
+    F_value = numeric(),
+    p_value = numeric(),
+    eta_p = numeric(),
+    stringsAsFactors = FALSE
+  )
+
+  for (res_name in names(result_list)) {
+    split_name <- unlist(strsplit(res_name, "_by_"))
+    DV <- split_name[1]
+    Moderator <- split_name[2]
+
+    ANOVA <- result_list[[res_name]]$ANOVA
+    Eta <- result_list[[res_name]]$Eta_Squared
+
+    if (is.null(ANOVA)) next
+    if (!all(c("Pr(>F)", "F value") %in% names(ANOVA))) next
+
+    # Keep every term (see note in the within-task version above): the adjudication
+    # step needs the full set of focal interactions to build the correction family.
+    sig_rows <- which(ANOVA$`Pr(>F)` <= 1)
+    if (length(sig_rows) == 0) next
+
+    for (i in sig_rows) {
+      this_term <- ANOVA$Variable[i]
+      Ndf <- ANOVA$NumDF[i]
+      Ddf <- ANOVA$DenDF[i]
+      Fval <- ANOVA$`F value`[i]
+      pval <- ANOVA$`Pr(>F)`[i]
+
+      eta_val <- NA
+      if (!is.null(Eta) && "Parameter" %in% names(Eta)) {
+        eta_row <- Eta[Eta$Parameter == this_term, , drop = FALSE]
+        if (nrow(eta_row) == 1) {
+          if ("Eta2_partial" %in% names(eta_row)) eta_val <- eta_row$Eta2_partial
+          if ("Eta2" %in% names(eta_row) && is.na(eta_val)) eta_val <- eta_row$Eta2
+        }
+      }
+
+      summary_sig_effects <- rbind(
+        summary_sig_effects,
+        data.frame(
+          DV = DV,
+          Moderator = Moderator,
+          Term = this_term,
+          NumDF = Ndf,
+          DenDF = Ddf,
+          F_value = Fval,
+          p_value = pval,
+          eta_p = eta_val,
+          stringsAsFactors = FALSE
+        )
+      )
+    }
+  }
+
+  summary_sig_effects <- summary_sig_effects %>%
+    dplyr::arrange(DV, Moderator, p_value)
+
+  write.xlsx(summary_sig_effects, file = out_excel_path, rowNames = FALSE)
+
+  cat(sprintf("Significant terms summary saved to %s\n", out_excel_path))
+
+  invisible(summary_sig_effects)
+}
+
+export_sig_effects(
+  result_list,
+  out_excel_path = "results/H3/H3_Attitude_Change_Moderation_Summary.xlsx"
+)
+```
+
+### Post Survey Experience
+#### Continuous Moderation Effects
+```{r continous-moderation-effects-1}
+moderators <- c(
+  "Pre_GLAT_Objective_AI_Literacy",
+  "Pre_AILS_CCS_Subjective_AI_Literacy",
+  "Pre_AI_Trust",
+  "Pre_AI_Usefulness",
+  "Pre_AI_Affect",
+  "Pre_AI_Self_Efficacy",
+  "Pre_Behavioral_Intention"
+)
+
+df$Satisfaction <- as.factor(df$Satisfaction)
+
+result_list <- list()
+```
+
+```{r continous-moderation-effects-2}
+# Each continuous moderator x 3 post-survey outcomes (learning, satisfaction, sign-up).
+for (mod in moderators) {
+  df[[mod]] <- as.numeric(df[[mod]])
+
+  # Mean-center the pre-measure moderators.
+  if (grepl("^Pre_", mod)) {
+    df[[mod]] <- scale(df[[mod]], scale = FALSE)
+  }
+
+  means_learning_mod <- df %>%
+    group_by(Label) %>%
+    summarise(
+      Mean = round(mean(Stats_Improvement, na.rm = TRUE), 2),
+      SD = round(sd(Stats_Improvement, na.rm = TRUE), 2),
+      N = n(),
+      .groups = "drop"
+    )
+
+  # Outcome 1: perceived learning (ANOVA).
+  formula_learning <- paste0("Stats_Improvement ~ Label * ", mod)
+  cat("\n===", "Stats Improvement +", mod, "===\n")
+  anova_mod <- aov(as.formula(formula_learning), data = df)
+  print(summary(anova_mod))
+
+  anova_tbl <- as.data.frame(summary(anova_mod)[[1]])
+  anova_tbl$Variable <- rownames(anova_tbl)
+  anova_tbl <- anova_tbl[, c("Variable", setdiff(names(anova_tbl), "Variable"))]
+
+  eta2_mod <- etaSquared(anova_mod, type = 2)
+
+  # Label contrasts evaluated at the moderator's mean.
+  mean_mod <- mean(df[[mod]], na.rm = TRUE)
+  posthoc_learning_mod <- tryCatch(
+    as.data.frame(
+      emmeans(anova_mod, pairwise ~ Label, at = setNames(list(mean_mod), mod))$contrasts
+    ),
+    error = function(e) data.frame()
+  )
+
+  # Outcome 2: satisfaction (ordinal logistic / polr).
+  formula_satis <- paste0("Satisfaction ~ Label * ", mod)
+  cat("\n===", "Satisfaction +", mod, "===\n")
+  satis_model_mod <- MASS::polr(as.formula(formula_satis), data = df, Hess = TRUE)
+
+  satis_aov <- Anova(satis_model_mod)
+  print(satis_aov)
+
+  # polr gives no p-values; derive them from the t (Wald z) values.
+  coefs <- summary(satis_model_mod)$coefficients
+  pvals <- 2 * pnorm(-abs(coefs[, "t value"]))
+  Satisfaction_Coefficients <- as.data.frame(cbind(coefs, "p value" = pvals))
+
+  posthoc_satis_mod <- tryCatch(
+    {
+      em_obj <- emmeans(
+        satis_model_mod,
+        pairwise ~ Label,
+        at = setNames(list(mean_mod), mod)
+      )
+      as.data.frame(em_obj$contrasts)
+    },
+    error = function(e) data.frame()
+  )
+
+  means_satis <- df %>%
+    group_by(Label) %>%
+    summarise(
+      Mean = round(mean(as.numeric(Satisfaction), na.rm = TRUE), 2),
+      SD = round(sd(as.numeric(Satisfaction), na.rm = TRUE), 2),
+      Median = median(as.numeric(Satisfaction), na.rm = TRUE),
+      N = n(),
+      .groups = "drop"
+    )
+
+  # Outcome 3: sign-up (logistic regression + chi-square / Cramer's V).
+  formula_signup <- paste0("Sign_Up ~ Label * ", mod)
+  cat("\n===", "Sign Up +", mod, "===\n")
+  logit_model_mod <- glm(as.formula(formula_signup), data = df, family = binomial)
+
+  odds_ci_mod <- exp(cbind(OR = coef(logit_model_mod), confint(logit_model_mod)))
+
+  table_signup <- table(df$Label, df$Sign_Up)
+  chisq_test <- chisq.test(table_signup)
+  print(chisq_test)
+
+  cramers_v <- sqrt(
+    chisq_test$statistic / (sum(table_signup) * (min(dim(table_signup)) - 1))
+  )
+
+  emm <- emmeans(logit_model_mod, ~Label, type = "response")
+  contrast_table <- as.data.frame(pairs(emm, adjust = "tukey"))
+
+  result_list[[mod]] <- list(
+    Learning_ANOVA = anova_tbl,
+    Learning_Eta2 = as.data.frame(eta2_mod),
+    Learning_Posthoc = posthoc_learning_mod,
+    Learning_Means = means_learning_mod,
+    Satisfaction_Coefs = Satisfaction_Coefficients,
+    Satisfaction_AOV = as.data.frame(satis_aov),
+    Satisfaction_Posthoc = posthoc_satis_mod,
+    Satisfaction_Means = means_satis,
+    SignUp_Logit_Coefs = as.data.frame(summary(logit_model_mod)$coefficients),
+    SignUp_Odds_CI = as.data.frame(odds_ci_mod),
+    SignUp_ChiSq = data.frame(
+      statistic = as.numeric(chisq_test$statistic),
+      parameter = as.numeric(chisq_test$parameter),
+      p.value   = as.numeric(chisq_test$p.value)
+    ),
+    SignUp_CramersV = data.frame(CramersV = as.numeric(cramers_v)),
+    SignUp_Posthoc_Tukey = contrast_table
+  )
+}
+```
+
+##### Export Results
+```{r export-results-6}
+flat_result_list <- list()
+
+for (mod in names(result_list)) {
+  for (nm in names(result_list[[mod]])) {
+    flat_result_list <- append_excel_sheet(
+      flat_result_list,
+      paste(substr(mod, 1, 15), substr(nm, 1, 15), sep = "_"),
+      result_list[[mod]][[nm]]
+    )
+  }
+}
+
+write.xlsx(
+  flat_result_list,
+  file = "results/H3/Post_Survey_Moderation_Results.xlsx",
+  rowNames = TRUE
+)
+```
+
+#### Categorical Moderation Effects
+```{r categorical-moderation-effects-1}
+moderators <- c("Stats_Background", "Used_LLM_Frequency", "Used_LLM_Hours")
+
+df <- df %>%
+  mutate(
+    Stats_Background   = as.factor(Stats_Background),
+    Used_LLM_Frequency = as.factor(Used_LLM_Frequency),
+    Used_LLM_Hours     = as.factor(Used_LLM_Hours),
+    Satisfaction       = as.factor(Satisfaction)
+  )
+
+result_list <- list()
+```
+
+```{r categorical-moderation-effects-2}
+# Each categorical moderator x 3 post-survey outcomes (learning, satisfaction, sign-up).
+for (mod in moderators) {
+  # Outcome 1: perceived learning (ANOVA).
+  formula_anova <- as.formula(paste0("Stats_Improvement ~ Label * ", mod))
+  cat("\n===", "Stats Improvement +", mod, "===\n")
+  anova_mod <- aov(formula_anova, data = df)
+  print(summary(anova_mod))
+
+  anova_tbl <- as.data.frame(summary(anova_mod)[[1]])
+  anova_tbl$Variable <- rownames(anova_tbl)
+  anova_tbl <- anova_tbl[, c("Variable", setdiff(names(anova_tbl), "Variable"))]
+
+  means_learning_mod <- df %>%
+    group_by(Label, !!sym(mod)) %>%
+    summarise(
+      Mean = round(mean(Stats_Improvement, na.rm = TRUE), 2),
+      SD = round(sd(Stats_Improvement, na.rm = TRUE), 2),
+      N = n(),
+      .groups = "drop"
+    )
+
+  emm_formula_interaction <- as.formula(paste("pairwise ~ Label *", mod))
+
+  posthoc_learning_mod <- tryCatch(
+    as.data.frame(emmeans(anova_mod, emm_formula_interaction)),
+    error = function(e) data.frame()
+  )
+
+  # Outcome 2: satisfaction (ordinal logistic / polr).
+  formula_satis <- as.formula(paste0("Satisfaction ~ Label * ", mod))
+  cat("\n===", "Satisfaction +", mod, "===\n")
+  satis_model_mod <- MASS::polr(formula_satis, data = df, Hess = TRUE)
+
+  satis_aov <- Anova(satis_model_mod)
+  print(satis_aov)
+
+  # polr gives no p-values; derive them from the t (Wald z) values.
+  coefs <- summary(satis_model_mod)$coefficients
+  pvals <- 2 * pnorm(-abs(coefs[, "t value"]))
+  Satisfaction_Coefficients <- as.data.frame(cbind(coefs, "p value" = pvals))
+
+  means_satis <- df %>%
+    group_by(Label, !!sym(mod)) %>%
+    summarise(
+      Mean = round(mean(as.numeric(Satisfaction), na.rm = TRUE), 2),
+      SD = round(sd(as.numeric(Satisfaction), na.rm = TRUE), 2),
+      Median = median(as.numeric(Satisfaction), na.rm = TRUE),
+      N = n(),
+      .groups = "drop"
+    )
+
+  posthoc_satis_mod <- tryCatch(
+    as.data.frame(emmeans(satis_model_mod, emm_formula_interaction)),
+    error = function(e) data.frame()
+  )
+
+  # Outcome 3: sign-up (logistic regression + chi-square / Cramer's V).
+  formula_logit <- as.formula(paste0("Sign_Up ~ Label * ", mod))
+  cat("\n===", "Sign Up +", mod, "===\n")
+  logit_model_mod <- glm(formula_logit, data = df, family = binomial)
+
+  table_signup <- table(df$Label, df$Sign_Up)
+  chisq_test <- chisq.test(table_signup)
+  print(chisq_test)
+
+  cramers_v <- sqrt(
+    chisq_test$statistic / (sum(table_signup) * (min(dim(table_signup)) - 1))
+  )
+
+  emm <- emmeans(logit_model_mod, ~Label, type = "response")
+  contrast_table <- as.data.frame(pairs(emm, adjust = "tukey"))
+
+  result_list[[mod]] <- list(
+    Learning_ANOVA = anova_tbl,
+    Learning_Means = means_learning_mod,
+    Learning_Posthoc = posthoc_learning_mod,
+    Satisfaction_Coeffs = Satisfaction_Coefficients,
+    Satisfaction_AOV = as.data.frame(satis_aov),
+    Satisfaction_Means = means_satis,
+    Satisfaction_Posthoc = posthoc_satis_mod,
+    SignUp_Logit_Coeffs = as.data.frame(summary(logit_model_mod)$coefficients),
+    SignUp_ChiSq = data.frame(
+      statistic = as.numeric(chisq_test$statistic),
+      parameter = as.numeric(chisq_test$parameter),
+      p.value   = as.numeric(chisq_test$p.value)
+    ),
+    SignUp_CramersV = data.frame(CramersV = as.numeric(cramers_v)),
+    SignUp_Posthoc_Tukey = contrast_table
+  )
+}
+```
+
+##### Export Results
+```{r export-results-7}
+flat_result_list <- list()
+
+for (mod in names(result_list)) {
+  for (nm in names(result_list[[mod]])) {
+    flat_result_list <- append_excel_sheet(
+      flat_result_list,
+      paste(substr(mod, 1, 15), substr(nm, 1, 15), sep = "_"),
+      result_list[[mod]][[nm]]
+    )
+  }
+}
+
+write.xlsx(
+  flat_result_list,
+  file = "results/H3/Post_Survey_Moderation_Results_2.xlsx",
+  rowNames = TRUE
+)
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```

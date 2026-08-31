@@ -1,0 +1,250 @@
+---
+title: "Figure 4"
+author: "Siyuan Huang"
+date: "2026-08-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(42)
+```
+
+## Load libraries
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(lemon)
+library(cowplot)
+```
+
+## House-style constants
+
+```{r house-style}
+# PNAS final-size artwork: Figure 4 is exported directly at one-column width.
+FONT_FAMILY    <- "Helvetica"
+FONT_SIZE_PT   <- 7
+FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
+GG_LINE_UNIT_PT  <- 0.75 * 72.27 / 25.4
+pt_to_ggline     <- function(x) x / GG_LINE_UNIT_PT
+SECONDARY_LINE_PT <- 0.25
+AXIS_LINE_PT      <- 0.50
+PRIMARY_LINE_PT   <- 0.75
+LINE_SIZE      <- pt_to_ggline(AXIS_LINE_PT)
+AXIS_LINE_SIZE <- pt_to_ggline(AXIS_LINE_PT)
+TICK_LENGTH_PT <- 2.5
+POINT_SIZE     <- 1.7
+POINT_STROKE   <- 0.53
+DODGE_WIDTH    <- 0.32
+FIG_WIDTH      <- 3.42
+FIG_HEIGHT     <- 2.671875
+
+Y_LIMITS <- c(4.5, 6.0)
+Y_BREAKS <- seq(4.5, 6.0, 0.5)
+
+MODEL_X <- c(
+  "GPT-4o" = 1.10,
+  "OpenAI o1" = 1.85,
+  "Grok 3" = 2.70,
+  "Gemini 2.0 Flash" = 3.45
+)
+X_LIMITS <- c(0.55, 4.00)
+
+GROUP_HEADER_Y   <- 0.965
+LEGEND_POSITION  <- c(0.06, 0.14)
+TOP_PAIR_X       <- c(0.2541, 0.4414)
+BOTTOM_PAIR_X    <- c(0.6537, 0.8410)
+BOTTOM_LABEL_X   <- mean(BOTTOM_PAIR_X)
+
+theme_figure4 <- function() {
+  theme_classic(base_family = FONT_FAMILY, base_size = FONT_SIZE_PT) +
+    theme(
+      text = element_text(family = FONT_FAMILY, size = FONT_SIZE_PT),
+      axis.line = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.line.x = element_blank(),
+      axis.ticks = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks.length = grid::unit(TICK_LENGTH_PT, "pt"),
+      axis.text = element_text(colour = "black", size = FONT_SIZE_PT),
+      axis.text.x = element_text(margin = margin(t = 3.5)),
+      axis.title = element_text(colour = "black", size = FONT_SIZE_PT),
+      legend.position = "inside",
+      legend.position.inside = LEGEND_POSITION,
+      legend.justification = c("left", "bottom"),
+      legend.direction = "horizontal",
+      legend.title = element_blank(),
+      legend.text = element_text(size = FONT_SIZE_PT),
+      legend.key = element_blank(),
+      legend.key.width = grid::unit(6, "pt"),
+      legend.key.height = grid::unit(7, "pt"),
+      legend.spacing.x = grid::unit(2, "pt"),
+      legend.margin = margin(0, 0, 0, 0),
+      plot.margin = margin(16, 5, 5, 5)
+    )
+}
+```
+
+## Import data
+
+```{r import-data, message=FALSE, warning=FALSE}
+df <- read_excel("data/Study_1_Subjective_Data.xlsx")
+```
+
+## Data processing and summary statistics
+
+```{r data-processing-and-summary-statistics, message=FALSE, warning=FALSE}
+df <- df %>%
+  mutate(
+    Mean_Quality = (
+      Statistical_Accuracy + Clarity_and_Structure +
+        Conceptual_Depth + Pedagogical_Effectiveness
+    ) / 4,
+    Model_Name = case_when(
+      Model == "ChatGPT_4o" ~ "GPT-4o",
+      Model == "ChatGPT_o1" ~ "OpenAI o1",
+      Model == "Grok3" ~ "Grok 3",
+      Model == "Gemini_2.0" ~ "Gemini 2.0 Flash"
+    )
+  )
+
+summary_data <- df %>%
+  group_by(Model_Name, Profession) %>%
+  summarise(
+    mean = mean(Mean_Quality),
+    sd = sd(Mean_Quality),
+    n = n(),
+    se = sd / sqrt(n),
+    ci_lower = mean - 1.96 * se,
+    ci_upper = mean + 1.96 * se,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    Model_Name = factor(
+      Model_Name,
+      levels = c("GPT-4o", "OpenAI o1", "Grok 3", "Gemini 2.0 Flash")
+    ),
+    Model_X = unname(MODEL_X[as.character(Model_Name)]),
+    Profession = factor(Profession, levels = c("Instructor", "Student"))
+  )
+```
+
+## Explicit visual mappings
+
+```{r visual-mappings}
+profession_colors <- c(
+  "Instructor" = "#D55E00",
+  "Student" = "#0072B2"
+)
+
+profession_shapes <- c(
+  "Instructor" = 15,
+  "Student" = 21
+)
+```
+
+## Plot and export
+
+```{r plot-and-export, message=FALSE, warning=FALSE}
+dodge <- position_dodge(width = DODGE_WIDTH)
+
+p_base <- ggplot(
+  summary_data,
+  aes(x = Model_X, y = mean, colour = Profession, shape = Profession)
+) +
+  geom_linerange(
+    aes(ymin = ci_lower, ymax = ci_upper),
+    linewidth = LINE_SIZE,
+    position = dodge,
+    show.legend = FALSE
+  ) +
+  geom_point(
+    size = POINT_SIZE,
+    stroke = POINT_STROKE,
+    fill = "white",
+    position = dodge
+  ) +
+  scale_colour_manual(values = profession_colors, name = NULL) +
+  scale_shape_manual(values = profession_shapes, name = NULL) +
+  scale_x_continuous(
+    limits = X_LIMITS,
+    breaks = unname(MODEL_X),
+    labels = names(MODEL_X),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    breaks = Y_BREAKS,
+    labels = scales::label_number(accuracy = 0.1),
+    expand = expansion(mult = c(0, 0))
+  ) +
+  annotate(
+    "segment",
+    x = MODEL_X[["GPT-4o"]], xend = MODEL_X[["OpenAI o1"]],
+    y = Y_LIMITS[1], yend = Y_LIMITS[1],
+    colour = "black", linewidth = AXIS_LINE_SIZE
+  ) +
+  annotate(
+    "segment",
+    x = MODEL_X[["Grok 3"]], xend = MODEL_X[["Gemini 2.0 Flash"]],
+    y = Y_LIMITS[1], yend = Y_LIMITS[1],
+    colour = "black", linewidth = AXIS_LINE_SIZE
+  ) +
+  coord_capped_cart(
+    ylim = Y_LIMITS,
+    left = "both",
+    gap = 0.01
+  ) +
+  labs(x = NULL, y = "Mean guidance quality rating") +
+  theme_figure4()
+
+top_pair_center <- mean(TOP_PAIR_X)
+
+p <- ggdraw(p_base) +
+  draw_label(
+    "Top two models",
+    x = top_pair_center, y = GROUP_HEADER_Y,
+    fontfamily = FONT_FAMILY, fontface = "bold",
+    size = FONT_SIZE_PT, colour = "black"
+  ) +
+  draw_label(
+    "Bottom two models",
+    x = BOTTOM_LABEL_X, y = GROUP_HEADER_Y,
+    fontfamily = FONT_FAMILY, fontface = "bold",
+    size = FONT_SIZE_PT, colour = "black"
+  )
+
+p
+
+ggsave(
+  "figure/Figure_Study1_2.pdf",
+  p,
+  width = FIG_WIDTH,
+  height = FIG_HEIGHT,
+  device = cairo_pdf,
+  family = FONT_FAMILY,
+  symbolfamily = FONT_FAMILY,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study1_2.png",
+  p,
+  width = FIG_WIDTH,
+  height = FIG_HEIGHT,
+  dpi = 300,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study1_2.svg",
+  p,
+  width = FIG_WIDTH,
+  height = FIG_HEIGHT,
+  bg = "white"
+)
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```

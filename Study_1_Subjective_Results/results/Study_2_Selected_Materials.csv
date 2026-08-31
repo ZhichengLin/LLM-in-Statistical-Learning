@@ -1,0 +1,4 @@
+Task,Model,Iteration,Model_Task_Accuracy,Objective_Rank,Instructor,Student,Selection_Basis
+95% confidence interval,OpenAI o1,3,1,2,5.9375,4.5625,Highest instructor mean
+P-value,GPT-4o,2,1,1,5.875,5.9375,Highest instructor mean
+Study comparison,GPT-4o,2,1,1,5.4375,6.1875,Tied highest instructor mean; higher student mean

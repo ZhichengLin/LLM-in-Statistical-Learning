@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use these data, materials, code, or outputs, please cite this repository and the associated article when its publication record is available."
+type: dataset
+title: "Source labels change the timing of accuracy gains with identical AI-generated explanations of statistical concepts"
+repository-code: "https://github.com/ZhichengLin/LLM-in-Statistical-Learning"
+version: "1.0.0"
+date-released: "2026-08-31"
+authors:
+  - family-names: Xu
+    given-names: Yuhong
+  - family-names: Huang
+    given-names: Siyuan
+  - family-names: Ji
+    given-names: Mengyu
+  - family-names: Lin
+    given-names: Zhicheng
+keywords:
+  - large language models
+  - statistics education
+  - source labeling
+  - AI-generated explanations
+  - human-AI collaboration

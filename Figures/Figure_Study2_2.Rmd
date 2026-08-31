@@ -1,0 +1,900 @@
+---
+title: "Figure 6"
+author: "Siyuan Huang"
+date: "2026-08-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+set.seed(42)
+```
+
+## Libraries and house style
+
+```{r libraries-and-style}
+library(tidyverse)
+library(readxl)
+library(cowplot)
+library(lemon)
+library(gridExtra)
+library(gtable)
+library(patchwork)
+library(lmerTest)
+library(emmeans)
+
+FONT_FAMILY    <- "Helvetica"
+FONT_SIZE_PT   <- 7
+FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
+TAG_SIZE_PT    <- 7.5
+GG_LINE_UNIT_PT  <- 0.75 * 72.27 / 25.4
+pt_to_ggline     <- function(x) x / GG_LINE_UNIT_PT
+SECONDARY_LINE_PT <- 0.25
+AXIS_LINE_PT      <- 0.50
+PRIMARY_LINE_PT   <- 0.75
+LINE_SIZE       <- pt_to_ggline(SECONDARY_LINE_PT)
+ERROR_LINE_SIZE <- pt_to_ggline(AXIS_LINE_PT)
+AXIS_LINE_SIZE  <- pt_to_ggline(AXIS_LINE_PT)
+DATA_LINE_SIZE  <- pt_to_ggline(PRIMARY_LINE_PT)
+TICK_LENGTH_PT <- 2.5
+POINT_SIZE     <- 1.8
+POINT_STROKE   <- 0.53
+INTERVAL_HIGHLIGHT_FILL <- "#EBEBEB"
+# Native publication width. Compressing the panel geometry should not alter
+# physical type or stroke sizes; place the exported PDF at this native width.
+FIGURE_WIDTH_IN  <- 5.75
+FIGURE_HEIGHT_IN <- 5.727273
+FIGURE_X_SHIFT <- 25 / (FIGURE_WIDTH_IN * 72)
+TOP_ROW_X_SHIFT <- -23 / (FIGURE_WIDTH_IN * 72)
+LOWER_ROW_X_SHIFT <- -16 / (FIGURE_WIDTH_IN * 72)
+
+RATING_LIMITS <- c(1, 5)
+RATING_BREAKS <- seq(1, 5, 1)
+SUMMARY_RATING_LIMITS <- c(3, 5)
+SUMMARY_RATING_BREAKS <- seq(3, 5, 0.5)
+CONFIDENCE_X_LIMITS <- c(0.85, 4.22)
+ATTRITION_X_LIMITS <- c(0.85, 3.15)
+ATTRITION_PANEL_RATIO <- diff(ATTRITION_X_LIMITS) / diff(CONFIDENCE_X_LIMITS)
+ATTRITION_PANEL_LEFT_SPACER <- 0.007
+
+GROUP_LEVELS <- c("AI", "AI Human", "Human")
+
+GROUP_COLORS <- c(
+  "AI" = "#0173B2",
+  "AI Human" = "#029E73",
+  "Human" = "#DE8F05"
+)
+
+GROUP_LABELS <- c(
+  "AI" = "AI",
+  "AI Human" = "AI + Human",
+  "Human" = "Human"
+)
+
+GROUP_SHAPES <- c(
+  "AI" = 21,
+  "AI Human" = 22,
+  "Human" = 24
+)
+
+theme_figure6 <- function() {
+  theme_classic(base_family = FONT_FAMILY, base_size = FONT_SIZE_PT) +
+    theme(
+      text = element_text(family = FONT_FAMILY, size = FONT_SIZE_PT),
+      axis.line = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks.length = grid::unit(TICK_LENGTH_PT, "pt"),
+      axis.text = element_text(colour = "black", size = FONT_SIZE_PT),
+      axis.text.x = element_text(margin = margin(t = 3)),
+      axis.title = element_text(colour = "black", size = FONT_SIZE_PT),
+      plot.title = element_text(
+        face = "bold", hjust = 0.5, size = FONT_SIZE_PT,
+        margin = margin(t = 6, b = 1)
+      ),
+      plot.subtitle = element_text(
+        hjust = 0.5, size = FONT_SIZE_PT,
+        margin = margin(b = 3)
+      ),
+      plot.tag = element_text(size = TAG_SIZE_PT, face = "bold"),
+      plot.tag.position = c(0.01, 0.97),
+      legend.title = element_text(size = FONT_SIZE_PT),
+      legend.text = element_text(size = FONT_SIZE_PT),
+      legend.key = element_blank(),
+      legend.background = element_blank(),
+      legend.key.width = grid::unit(6, "pt"),
+      legend.key.height = grid::unit(7, "pt"),
+      legend.spacing.y = grid::unit(0.5, "pt"),
+      legend.margin = margin(0, 0, 0, 0),
+      strip.background = element_blank(),
+      strip.text = element_text(size = FONT_SIZE_PT),
+      panel.grid = element_blank(),
+      plot.margin = margin(4, 4, 4, 4)
+    )
+}
+```
+
+## Data and summaries
+
+```{r data-and-summaries}
+summarise_mean_ci <- function(data, value, group_vars) {
+  data %>%
+    group_by(across(all_of(group_vars))) %>%
+    summarise(
+      mean = mean(.data[[value]], na.rm = TRUE),
+      sd = sd(.data[[value]], na.rm = TRUE),
+      n = sum(!is.na(.data[[value]])),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      se = sd / sqrt(n),
+      ci95 = qt(0.975, df = pmax(n - 1, 1)) * se
+    )
+}
+
+data_raw <- read_excel(
+  "../Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx"
+)
+data_filtered <- data_raw %>%
+  filter(stage1_task0_accuracy < 0.9) %>%
+  mutate(followup_complete = !is.na(follow_task0_confidence))
+
+confidence_long <- data_filtered %>%
+  select(
+    ID,
+    Label,
+    `Stage 1` = stage1_task0_confidence,
+    `Stage 2` = stage2_task0_confidence,
+    `Stage 3` = stage3_task0_confidence,
+    `Follow-up` = follow_task0_confidence
+  ) %>%
+  pivot_longer(
+    cols = c(`Stage 1`, `Stage 2`, `Stage 3`, `Follow-up`),
+    names_to = "Phase_short",
+    values_to = "Confidence"
+  ) %>%
+  mutate(
+    Phase_short = factor(
+      Phase_short,
+      levels = c("Stage 1", "Stage 2", "Stage 3", "Follow-up")
+    ),
+    Label = factor(Label, levels = GROUP_LEVELS)
+  )
+
+confidence_summary <- summarise_mean_ci(
+  confidence_long,
+  value = "Confidence",
+  group_vars = c("Label", "Phase_short")
+) %>%
+  mutate(
+    x_plot = as.numeric(Phase_short)
+  )
+
+make_attrition_summary <- function(data, sample_label) {
+  confidence_long <- data %>%
+    select(
+      ID,
+      `Stage 1` = stage1_task0_confidence,
+      `Stage 2` = stage2_task0_confidence,
+      `Stage 3` = stage3_task0_confidence
+    ) %>%
+    pivot_longer(
+      cols = c(`Stage 1`, `Stage 2`, `Stage 3`),
+      names_to = "Phase_short",
+      values_to = "Confidence"
+    ) %>%
+    mutate(
+      Phase_short = factor(
+        Phase_short,
+        levels = c("Stage 1", "Stage 2", "Stage 3")
+      ),
+      Sample = sample_label
+    )
+
+  summarise_mean_ci(
+    confidence_long,
+    value = "Confidence",
+    group_vars = c("Sample", "Phase_short")
+  )
+}
+
+attrition_summary <- bind_rows(
+  make_attrition_summary(data_filtered, "All participants"),
+  make_attrition_summary(
+    data_filtered %>% filter(followup_complete),
+    "Follow-up completers"
+  )
+) %>%
+  mutate(
+    Phase_short = factor(
+      Phase_short,
+      levels = c("Stage 1", "Stage 2", "Stage 3")
+    ),
+    Sample = factor(
+      Sample,
+      levels = c("All participants", "Follow-up completers")
+    ),
+    x_plot = as.numeric(Phase_short)
+  )
+
+make_rating_bundle <- function(stage2_col, stage3_col) {
+  all_long <- data_filtered %>%
+    select(ID, Label, all_of(c(stage2_col, stage3_col)))
+  names(all_long) <- c("ID", "Label", "Stage 2", "Stage 3")
+
+  all_long <- all_long %>%
+    pivot_longer(
+      cols = c("Stage 2", "Stage 3"),
+      names_to = "Phase",
+      values_to = "Rating"
+    ) %>%
+    drop_na(Rating) %>%
+    mutate(
+      Label = factor(Label, levels = GROUP_LEVELS),
+      Phase = factor(Phase, levels = c("Stage 2", "Stage 3"))
+    )
+
+  all_summary <- summarise_mean_ci(
+    all_long,
+    value = "Rating",
+    group_vars = c("Label", "Phase")
+  )
+
+  completer_long <- data_filtered %>%
+    filter(followup_complete) %>%
+    select(ID, Label, all_of(c(stage2_col, stage3_col)))
+  names(completer_long) <- c("ID", "Label", "Stage 2", "Stage 3")
+
+  completer_long <- completer_long %>%
+    pivot_longer(
+      cols = c("Stage 2", "Stage 3"),
+      names_to = "Phase",
+      values_to = "Rating"
+    ) %>%
+    drop_na(Rating) %>%
+    mutate(
+      Label = factor(Label, levels = GROUP_LEVELS),
+      Phase = factor(Phase, levels = c("Stage 2", "Stage 3"))
+    )
+
+  completer_summary <- summarise_mean_ci(
+    completer_long,
+    value = "Rating",
+    group_vars = c("Label", "Phase")
+  )
+
+  list(
+    raw = all_long,
+    all = all_summary,
+    completers = completer_summary
+  )
+}
+
+willingness <- make_rating_bundle(
+  "stage2_task0_willing",
+  "stage3_task0_willing"
+)
+
+usefulness <- make_rating_bundle(
+  "stage2_task0_useful",
+  "stage3_task0_useful"
+)
+```
+
+## Panel a: Confidence across phases
+
+```{r panel-a}
+fig21 <- ggplot(confidence_summary, aes(x = x_plot, y = mean)) +
+  annotate(
+    "rect",
+    xmin = 2,
+    xmax = 3,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = INTERVAL_HIGHLIGHT_FILL,
+    colour = NA
+  ) +
+  geom_vline(
+    xintercept = 3.5,
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_linerange(
+    aes(ymin = mean - ci95, ymax = mean + ci95, colour = Label),
+    linewidth = ERROR_LINE_SIZE,
+    show.legend = FALSE
+  ) +
+  geom_line(
+    aes(group = Label, colour = Label),
+    linewidth = DATA_LINE_SIZE,
+    show.legend = FALSE
+  ) +
+  geom_point(
+    aes(shape = Label, fill = Label, colour = Label),
+    size = POINT_SIZE,
+    stroke = POINT_STROKE
+  ) +
+  annotate(
+    "text",
+    x = 3.56, y = 4.64,
+    label = "1-month\ndelay",
+    hjust = 0,
+    size = FONT_SIZE_GEOM,
+    family = FONT_FAMILY
+  ) +
+  scale_colour_manual(
+    values = GROUP_COLORS,
+    breaks = GROUP_LEVELS,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_fill_manual(
+    values = GROUP_COLORS,
+    breaks = GROUP_LEVELS,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_shape_manual(
+    values = GROUP_SHAPES,
+    breaks = GROUP_LEVELS,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_x_continuous(
+    limits = CONFIDENCE_X_LIMITS,
+    breaks = 1:4,
+    labels = c("Stage 1", "Stage 2", "Stage 3", "Follow-up"),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    limits = SUMMARY_RATING_LIMITS,
+    breaks = SUMMARY_RATING_BREAKS,
+    expand = expansion(mult = 0)
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    tag = "A",
+    title = "Confidence in own answer across phases",
+    x = NULL,
+    y = "Confidence rating"
+  ) +
+  theme_figure6() +
+  theme(
+    legend.position = "inside",
+    legend.position.inside = c(0.05, 0.98),
+    legend.justification = c("left", "top"),
+    legend.title = element_text(hjust = 0),
+    legend.text = element_text(hjust = 0),
+    plot.margin = margin(4, 5, 4, 5)
+  ) +
+  guides(
+    colour = guide_legend(
+      nrow = 3,
+      byrow = TRUE,
+      override.aes = list(
+        linetype = 0,
+        shape = unname(GROUP_SHAPES),
+        fill = unname(GROUP_COLORS),
+        colour = unname(GROUP_COLORS),
+        size = POINT_SIZE,
+        stroke = POINT_STROKE
+      )
+    ),
+    fill = "none",
+    shape = "none"
+  )
+
+sample_row_a <- ggplot() +
+  annotate(
+    "segment",
+    x = 1, xend = 1.58, y = 4.3, yend = 4.3,
+    colour = "grey55", linewidth = LINE_SIZE
+  ) +
+  annotate(
+    "segment",
+    x = 2.42, xend = 3, y = 4.3, yend = 4.3,
+    colour = "grey55", linewidth = LINE_SIZE
+  ) +
+  annotate(
+    "text",
+    x = 2, y = 4.3, label = "italic(n) == 175",
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, parse = TRUE
+  ) +
+  annotate(
+    "text",
+    x = 4, y = 4.3, label = "italic(n) == 84",
+    family = FONT_FAMILY, size = FONT_SIZE_GEOM, parse = TRUE
+  ) +
+  scale_x_continuous(
+    limits = CONFIDENCE_X_LIMITS,
+    breaks = 1:4,
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    limits = SUMMARY_RATING_LIMITS,
+    breaks = SUMMARY_RATING_BREAKS,
+    expand = expansion(mult = 0)
+  ) +
+  coord_cartesian(clip = "off") +
+  labs(x = NULL, y = "Confidence rating") +
+  theme_figure6() +
+  theme(
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_text(colour = "transparent"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(colour = "transparent"),
+    legend.position = "none",
+    plot.margin = margin(0, 5, 0, 5)
+  )
+
+panel_a <- fig21 / sample_row_a +
+  plot_layout(heights = c(1, 0.10))
+```
+
+## Panel a, right: Attrition sensitivity test
+
+```{r panel-b}
+attrition_labels <- c(
+  "All participants<br>(<i>n</i> = 175)",
+  "Follow-up completers<br>(<i>n</i> = 84)"
+)
+
+fig22 <- ggplot(attrition_summary, aes(x = x_plot, y = mean)) +
+  geom_linerange(
+    aes(ymin = mean - ci95, ymax = mean + ci95),
+    colour = "black",
+    linewidth = ERROR_LINE_SIZE
+  ) +
+  geom_line(
+    aes(group = Sample, linetype = Sample),
+    colour = "black",
+    linewidth = DATA_LINE_SIZE
+  ) +
+  geom_point(
+    aes(shape = Sample, fill = Sample),
+    colour = "black",
+    size = POINT_SIZE,
+    stroke = POINT_STROKE
+  ) +
+  scale_shape_manual(
+    values = c("All participants" = 21, "Follow-up completers" = 21),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_fill_manual(
+    values = c("All participants" = "black", "Follow-up completers" = "white"),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_linetype_manual(
+    values = c("All participants" = "solid", "Follow-up completers" = "dashed"),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_x_continuous(
+    limits = ATTRITION_X_LIMITS,
+    breaks = 1:3,
+    labels = c("Stage 1", "Stage 2", "Stage 3"),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    limits = SUMMARY_RATING_LIMITS,
+    breaks = SUMMARY_RATING_BREAKS,
+    expand = expansion(mult = 0)
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    tag = NULL,
+    title = "Attrition sensitivity test",
+    subtitle = "Collapsed across labels",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_figure6() +
+  theme(
+    legend.position = "inside",
+    legend.position.inside = c(0.05, 0.98),
+    legend.justification = c("left", "top"),
+    legend.text = ggtext::element_markdown(hjust = 0, lineheight = 0.95),
+    legend.key.height = grid::unit(13, "pt"),
+    legend.key.spacing.y = grid::unit(4, "pt"),
+    plot.margin = margin(9, 17, -1, -5)
+  ) +
+  guides(
+    fill = guide_legend(
+      nrow = 2,
+      byrow = TRUE,
+      override.aes = list(
+        shape = 21,
+        size = POINT_SIZE,
+        stroke = POINT_STROKE
+      )
+    ),
+    shape = "none",
+    linetype = "none"
+  )
+
+panel_b <- fig22 / plot_spacer() +
+  plot_layout(heights = c(1, 0.10))
+```
+
+## Panels b and c: Stage 2 versus Stage 3 ratings
+
+```{r rating-panels}
+make_rating_plot <- function(bundle, panel_tag, panel_title, y_title = NULL) {
+  ggplot(bundle$raw, aes(x = Phase, y = Rating)) +
+    geom_line(
+      aes(group = ID),
+      colour = "grey82",
+      alpha = 0.65,
+      linewidth = LINE_SIZE
+    ) +
+    annotate(
+      "segment",
+      x = 1, xend = 2,
+      y = 3, yend = 3,
+      linetype = "dashed",
+      colour = "grey55",
+      linewidth = LINE_SIZE
+    ) +
+    geom_linerange(
+      data = bundle$all,
+      aes(x = Phase, ymin = mean - ci95, ymax = mean + ci95, colour = Label),
+      linewidth = ERROR_LINE_SIZE,
+      inherit.aes = FALSE
+    ) +
+    geom_line(
+      data = bundle$all,
+      aes(x = Phase, y = mean, group = Label, colour = Label),
+      linewidth = DATA_LINE_SIZE,
+      inherit.aes = FALSE
+    ) +
+    geom_point(
+      data = bundle$all,
+      aes(x = Phase, y = mean, shape = Label, fill = Label, colour = Label),
+      size = POINT_SIZE,
+      stroke = POINT_STROKE,
+      inherit.aes = FALSE
+    ) +
+    geom_linerange(
+      data = bundle$completers,
+      aes(x = Phase, ymin = mean - ci95, ymax = mean + ci95, colour = Label),
+      linewidth = ERROR_LINE_SIZE,
+      inherit.aes = FALSE
+    ) +
+    geom_line(
+      data = bundle$completers,
+      aes(x = Phase, y = mean, group = Label, colour = Label),
+      linetype = "dashed",
+      linewidth = DATA_LINE_SIZE,
+      inherit.aes = FALSE
+    ) +
+    geom_point(
+      data = bundle$completers,
+      aes(x = Phase, y = mean, shape = Label, colour = Label),
+      fill = "white",
+      size = POINT_SIZE,
+      stroke = POINT_STROKE,
+      inherit.aes = FALSE
+    ) +
+    facet_wrap(
+      ~Label,
+      nrow = 1,
+      labeller = as_labeller(GROUP_LABELS)
+    ) +
+    scale_colour_manual(values = GROUP_COLORS, breaks = GROUP_LEVELS) +
+    scale_fill_manual(values = GROUP_COLORS, breaks = GROUP_LEVELS) +
+    scale_shape_manual(values = GROUP_SHAPES, breaks = GROUP_LEVELS) +
+    scale_x_discrete(
+      labels = c("Stage 2" = "2", "Stage 3" = "3"),
+      expand = expansion(add = 0.75)
+    ) +
+    scale_y_continuous(
+      limits = RATING_LIMITS,
+      breaks = RATING_BREAKS,
+      expand = expansion(mult = 0)
+    ) +
+    coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+    labs(
+      tag = panel_tag,
+      title = panel_title,
+      x = "Stage",
+      y = y_title
+    ) +
+    theme_figure6() +
+    theme(
+      legend.position = "none",
+      panel.spacing = grid::unit(4, "pt"),
+      axis.title.x = element_text(margin = margin(t = 2)),
+      plot.tag.position = c(0.01, 0.97),
+      plot.margin = margin(4, 4, 1, 4)
+    )
+}
+
+fig23 <- make_rating_plot(
+  willingness,
+  "B",
+  "Willingness to accept guidance/answers",
+  "Rating"
+) +
+  geom_text(
+    data = data.frame(
+      Label = factor("AI", levels = GROUP_LEVELS),
+      Phase = factor("Stage 2", levels = c("Stage 2", "Stage 3")),
+      Rating = 3
+    ),
+    aes(x = Phase, y = Rating, label = "Neutral"),
+    nudge_x = 0.5,
+    hjust = 0.5,
+    vjust = -0.35,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM,
+    inherit.aes = FALSE
+  )
+
+fig24 <- make_rating_plot(
+  usefulness,
+  "C",
+  "Perceived usefulness of guidance/answers",
+  "Rating"
+)
+```
+
+## Compact p-value rows
+
+```{r p-value-rows}
+format_p <- function(p) {
+  if (length(p) != 1 || !is.finite(p)) {
+    stop("A figure annotation did not resolve to one finite P value.")
+  }
+
+  if (p < 0.001) {
+    "italic(P)~'< 0.001'"
+  } else {
+    sprintf("italic(P)~'= %.3f'", p)
+  }
+}
+
+extract_full_sample_p <- function(measure) {
+  result_path <- paste0(
+    "../Study_2_Main_Results/results/H2/",
+    "H2_Within_Task_Attitude_Perceptions.xlsx"
+  )
+  sheet <- paste0(measure, "_Posthoc_Stage_Label")
+
+  result <- read_excel(result_path, sheet = sheet) %>%
+    filter(
+      .data$contrast == "stage3 - stage2",
+      .data$Label %in% GROUP_LEVELS
+    ) %>%
+    mutate(Label = factor(.data$Label, levels = GROUP_LEVELS)) %>%
+    arrange(.data$Label)
+
+  if (nrow(result) != length(GROUP_LEVELS) || any(!is.finite(result$p.value))) {
+    stop(sprintf(
+      "Could not recover the three %s P values from %s [%s].",
+      measure, result_path, sheet
+    ))
+  }
+
+  setNames(result$p.value, as.character(result$Label))
+}
+
+fit_completer_p <- function(measure) {
+  completer_long <- data_filtered %>%
+    filter(.data$followup_complete) %>%
+    mutate(
+      Label = factor(.data$Label, levels = GROUP_LEVELS),
+      Used_LLM_Hours = case_when(
+        .data$Used_LLM_Hours == "0" ~ "None",
+        .data$Used_LLM_Hours %in% c("1–5", "6–10") ~ "Low",
+        .data$Used_LLM_Hours %in% c("11–20", ">20") ~ "High",
+        TRUE ~ NA_character_
+      ),
+      Used_LLM_Hours = droplevels(factor(
+        .data$Used_LLM_Hours,
+        levels = c("None", "Low", "High")
+      ))
+    ) %>%
+    select(
+      ID, Label, Age, Gender, Field, Used_LLM_Hours,
+      matches(paste0("^stage[23]_task[1-3]_", measure, "$"))
+    ) %>%
+    pivot_longer(
+      cols = matches("^stage[23]_task[1-3]_"),
+      names_to = "fullvar",
+      values_to = "Value"
+    ) %>%
+    mutate(
+      Phase = str_extract(.data$fullvar, "^stage[23]"),
+      Task = str_extract(.data$fullvar, "task[1-3]"),
+      Phase = factor(.data$Phase, levels = c("stage3", "stage2")),
+      ID = factor(.data$ID),
+      Task = factor(.data$Task)
+    )
+
+  model <- lmer(
+    Value ~ Phase * Label + Age + Gender + Field + Used_LLM_Hours +
+      (1 | ID) + (1 | Task) + (1 | ID:Task),
+    data = completer_long
+  )
+
+  result <- as.data.frame(
+    pairs(emmeans(model, ~ Phase | Label))
+  ) %>%
+    filter(
+      .data$contrast == "stage3 - stage2",
+      .data$Label %in% GROUP_LEVELS
+    ) %>%
+    mutate(Label = factor(.data$Label, levels = GROUP_LEVELS)) %>%
+    arrange(.data$Label)
+
+  if (nrow(result) != length(GROUP_LEVELS) || any(!is.finite(result$p.value))) {
+    stop(sprintf(
+      "Could not calculate the three completer-only %s P values.",
+      measure
+    ))
+  }
+
+  setNames(result$p.value, as.character(result$Label))
+}
+
+willing_p_all <- extract_full_sample_p("willing")
+willing_p_completers <- fit_completer_p("willing")
+useful_p_all <- extract_full_sample_p("useful")
+useful_p_completers <- fit_completer_p("useful")
+
+make_p_table <- function(values_all, values_completers) {
+  p_data <- data.frame(
+    AI = values_all[1:1],
+    AI_Human = values_all[2:2],
+    Human = values_all[3:3],
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+
+  p_data[2, 1:3] <- values_completers
+
+  p_theme <- ttheme_minimal(
+    base_family = FONT_FAMILY,
+    base_size = FONT_SIZE_PT,
+    core = list(
+      fg_params = list(hjust = 0.5, x = 0.5, parse = TRUE),
+      bg_params = list(fill = "white", col = NA),
+      padding = grid::unit(c(0.75, 1.5), "mm")
+    )
+  )
+
+  tbl <- tableGrob(
+    p_data,
+    rows = NULL,
+    cols = NULL,
+    theme = p_theme
+  )
+
+  tbl$widths <- grid::unit.c(
+    grid::unit(1, "null"),
+    grid::unit(1, "null"),
+    grid::unit(1, "null")
+  )
+
+  tbl
+}
+
+table_c <- make_p_table(
+  vapply(willing_p_all, format_p, character(1)),
+  vapply(willing_p_completers, format_p, character(1))
+)
+
+table_d <- make_p_table(
+  vapply(useful_p_all, format_p, character(1)),
+  vapply(useful_p_completers, format_p, character(1))
+)
+
+table_c_plot <- ggdraw() +
+  draw_grob(table_c, x = 0, y = 0.02, width = 1, height = 0.72) +
+  draw_line(
+    x = c(0.092, 0.908), y = c(0.90, 0.90),
+    colour = "grey55", size = LINE_SIZE
+  ) +
+  draw_label(
+    "All", x = -0.13, y = 0.56, hjust = 0,
+    fontfamily = FONT_FAMILY, size = FONT_SIZE_PT
+  ) +
+  draw_label(
+    "Completers", x = -0.13, y = 0.20, hjust = 0,
+    fontfamily = FONT_FAMILY, size = FONT_SIZE_PT
+  )
+
+table_d_plot <- ggdraw() +
+  draw_grob(table_d, x = 0, y = 0.02, width = 1, height = 0.72) +
+  draw_line(
+    x = c(0.092, 0.908), y = c(0.90, 0.90),
+    colour = "grey55", size = LINE_SIZE
+  )
+
+```
+
+## Combine and export
+
+```{r combine-and-export}
+top_row <- (panel_a | plot_spacer() | panel_b) +
+  plot_layout(
+    widths = c(
+      1,
+      ATTRITION_PANEL_LEFT_SPACER,
+      ATTRITION_PANEL_RATIO
+    )
+  )
+
+lower_design <- "
+AB
+CD
+"
+
+lower_row <- fig23 + fig24 + table_c_plot + table_d_plot +
+  plot_layout(
+    design = lower_design,
+    widths = c(1, 1),
+    heights = c(1, 0.24)
+  )
+
+top_canvas <- ggdraw() +
+  draw_plot(top_row, x = TOP_ROW_X_SHIFT, y = 0, width = 1, height = 1)
+
+lower_canvas <- ggdraw() +
+  draw_plot(lower_row, x = LOWER_ROW_X_SHIFT, y = 0, width = 1, height = 1)
+
+combined_rows <- plot_grid(
+  top_canvas,
+  lower_canvas,
+  ncol = 1,
+  rel_heights = c(0.92, 1.08)
+)
+
+combined_figure <- ggdraw() +
+  draw_plot(
+    combined_rows,
+    x = FIGURE_X_SHIFT,
+    y = 0,
+    width = 1,
+    height = 1
+  )
+
+print(combined_figure)
+
+ggsave(
+  "figure/Figure_Study2_2.pdf",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  device = cairo_pdf,
+  family = FONT_FAMILY,
+  symbolfamily = FONT_FAMILY,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study2_2.png",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  dpi = 300,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study2_2.svg",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  bg = "white"
+)
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```

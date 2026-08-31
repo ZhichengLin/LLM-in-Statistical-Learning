@@ -1,0 +1,4 @@
+"Model","Analysis_Unit","Formula","Observations","Participants","NumDF","DenDF","F","P","Singular","Diagnostic"
+"Registered participant intercept (unadjusted)","Three task-level scores per participant x phase","Value ~ Phase * Label + (1 | ID)",1827,175,6,1681.18195444179,1.83638717801136,0.088517892315721,FALSE,""
+"Expanded task-structured sensitivity (unadjusted)","Three task-level scores per participant x phase","Value ~ Phase * Label + (1 | ID) + (1 | Task) + (1 | ID:Task)",1827,175,6,1320.05494890479,2.44160441950772,0.0236880514375046,FALSE,""
+"Expanded task-structured sensitivity (attrition adjusted)","Three task-level scores per participant x phase","Value ~ Phase * Label + Age + Gender + Field + Used_LLM_Hours +      (1 | ID) + (1 | Task) + (1 | ID:Task)",1809,173,6,1307.13871454555,2.37312803675793,0.0276531165972294,FALSE,""

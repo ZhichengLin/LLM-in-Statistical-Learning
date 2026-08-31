@@ -1,0 +1,671 @@
+---
+title: "Figure 5"
+author: "Siyuan Huang"
+date: "2026-08-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(42)
+```
+
+## Load libraries
+
+```{r load-libraries, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(lemon)
+library(Rmisc)
+library(patchwork)
+library(cowplot)
+```
+
+## House-style constants
+
+```{r house-style}
+# PNAS final-size artwork: Figure 5 is exported directly at full width.
+FONT_FAMILY    <- "Helvetica"
+FONT_SIZE_PT   <- 7
+FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
+TAG_SIZE_PT    <- 7.5
+GG_LINE_UNIT_PT  <- 0.75 * 72.27 / 25.4
+pt_to_ggline     <- function(x) x / GG_LINE_UNIT_PT
+SECONDARY_LINE_PT <- 0.25
+AXIS_LINE_PT      <- 0.50
+PRIMARY_LINE_PT   <- 0.75
+LINE_SIZE       <- pt_to_ggline(SECONDARY_LINE_PT)
+ERROR_LINE_SIZE <- pt_to_ggline(AXIS_LINE_PT)
+AXIS_LINE_SIZE  <- pt_to_ggline(AXIS_LINE_PT)
+DATA_LINE_SIZE  <- pt_to_ggline(PRIMARY_LINE_PT)
+TICK_LENGTH_PT <- 2.5
+POINT_SIZE     <- 1.8
+POINT_STROKE   <- 0.53
+INTERVAL_HIGHLIGHT_FILL <- "#EBEBEB"
+FIGURE_WIDTH_IN  <- 7
+FIGURE_HEIGHT_IN <- 3.111111
+
+ACCURACY_LIMITS <- c(0, 100)
+ACCURACY_BREAKS <- seq(0, 100, 20)
+SUMMARY_ACCURACY_LIMITS <- c(40, 100)
+SUMMARY_ACCURACY_BREAKS <- seq(40, 100, 20)
+
+GROUP_COLORS <- c(
+  "AI" = "#0173B2",
+  "AI Human" = "#029E73",
+  "Human" = "#DE8F05"
+)
+
+GROUP_LABELS <- c(
+  "AI" = "AI",
+  "AI Human" = "AI + Human",
+  "Human" = "Human"
+)
+
+GROUP_SHAPES <- c(
+  "AI" = 21,
+  "AI Human" = 22,
+  "Human" = 24
+)
+
+theme_figure5 <- function() {
+  theme_classic(base_family = FONT_FAMILY, base_size = FONT_SIZE_PT) +
+    theme(
+      text = element_text(family = FONT_FAMILY, size = FONT_SIZE_PT),
+      axis.line = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks = element_line(colour = "#000000", linewidth = AXIS_LINE_SIZE),
+      axis.ticks.length = grid::unit(TICK_LENGTH_PT, "pt"),
+      axis.text = element_text(colour = "black", size = FONT_SIZE_PT),
+      axis.text.x = element_text(margin = margin(t = 3)),
+      axis.title = element_text(colour = "black", size = FONT_SIZE_PT),
+      plot.title = element_text(
+        face = "bold", hjust = 0.5, size = FONT_SIZE_PT,
+        margin = margin(t = 7, b = 1)
+      ),
+      plot.subtitle = element_text(
+        hjust = 0.5, size = FONT_SIZE_PT,
+        margin = margin(b = 3)
+      ),
+      legend.title = element_text(size = FONT_SIZE_PT),
+      legend.text = element_text(size = FONT_SIZE_PT),
+      legend.key = element_blank(),
+      legend.background = element_blank(),
+      legend.key.width = grid::unit(6, "pt"),
+      legend.key.height = grid::unit(7, "pt"),
+      legend.spacing.y = grid::unit(0.5, "pt"),
+      legend.margin = margin(0, 0, 0, 0),
+      strip.background = element_blank(),
+      strip.text = element_text(size = FONT_SIZE_PT),
+      panel.grid = element_blank(),
+      plot.margin = margin(4, 4, 4, 4)
+    )
+}
+```
+
+## Load utilities and data
+
+```{r load-utilities-and-data, message=FALSE, warning=FALSE}
+source("plot_util_test.R")
+
+data_raw <- read_excel(
+  "../Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx"
+)
+data_filtered <- data_raw[data_raw$stage1_task0_accuracy < 0.9, ]
+```
+
+## Panel a: Task accuracy across phases
+
+```{r panel-a-data, message=FALSE, warning=FALSE}
+data_filtered1 <- data_filtered[, c(
+  "Label",
+  "stage1_task0_accuracy",
+  "stage2_task0_accuracy",
+  "stage3_task0_accuracy",
+  "follow_task0_accuracy"
+)]
+
+data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_task0_accuracy), ]
+
+df_11 <- data_preprocessing(
+  data = data_filtered1,
+  label_col = c(
+    "Label",
+    "stage1_task0_accuracy",
+    "stage2_task0_accuracy",
+    "stage3_task0_accuracy",
+    "follow_task0_accuracy"
+  ),
+  new_columns_name = c("Label", "Stage1", "Stage2", "Stage3", "Follow"),
+  data_columns = c("Stage1", "Stage2", "Stage3", "Follow"),
+  one_names_values = "Phase",
+  one_values_values = "Accuracy",
+  after_columns_name = c(
+    "Stage 1: Independent work",
+    "Stage 2: LLM-guided practice",
+    "Stage 3: LLM-provided answers",
+    "Follow-up"
+  ),
+  phase_subtitle_name = c(
+    "Independent \n work",
+    "LLM-guided \n practice",
+    "LLM-provided \n answers",
+    ""
+  ),
+  phase_short_name = c("Stage 1", "Stage 2", "Stage 3", "Follow-up"),
+  groupby_col = "Label"
+)
+
+df_11_plot <- df_11$stats_summary %>%
+  mutate(
+    Phase_short = factor(
+      Phase_short,
+      levels = c("Stage 1", "Stage 2", "Stage 3", "Follow-up")
+    ),
+    Label = factor(Label, levels = c("AI", "AI Human", "Human")),
+    x_plot = as.numeric(Phase_short),
+    mean_pct = mean * 100,
+    ci_pct = ci95 * 100
+  )
+```
+
+```{r panel-a-plot, message=FALSE, warning=FALSE}
+fig11 <- ggplot(df_11_plot, aes(x = x_plot, y = mean_pct)) +
+  annotate(
+    "rect",
+    xmin = 1,
+    xmax = 2,
+    ymin = -Inf,
+    ymax = Inf,
+    fill = INTERVAL_HIGHLIGHT_FILL,
+    colour = NA
+  ) +
+  geom_hline(
+    yintercept = 50,
+    linetype = "dashed",
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_vline(
+    xintercept = 3.5,
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_linerange(
+    aes(
+      ymin = mean_pct - ci_pct,
+      ymax = mean_pct + ci_pct,
+      colour = Label
+    ),
+    linewidth = ERROR_LINE_SIZE,
+    show.legend = FALSE
+  ) +
+  geom_line(
+    aes(group = Label, colour = Label),
+    linewidth = DATA_LINE_SIZE,
+    show.legend = FALSE
+  ) +
+  geom_point(
+    aes(fill = Label, colour = Label, shape = Label),
+    size = POINT_SIZE,
+    stroke = POINT_STROKE
+  ) +
+  annotate(
+    "text",
+    x = 3.58,
+    y = 52,
+    label = "Chance",
+    hjust = 0,
+    vjust = 0,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM
+  ) +
+  annotate(
+    "text",
+    x = 3.58,
+    y = 96,
+    label = "1-month\ndelay",
+    hjust = 0,
+    vjust = 1,
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM
+  ) +
+  scale_colour_manual(
+    values = GROUP_COLORS,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_fill_manual(
+    values = GROUP_COLORS,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_shape_manual(
+    values = GROUP_SHAPES,
+    labels = GROUP_LABELS,
+    name = "Label"
+  ) +
+  scale_x_continuous(
+    limits = c(0.85, 4.25),
+    breaks = 1:4,
+    labels = c(
+      "Stage 1",
+      "Stage 2",
+      "Stage 3",
+      "Follow-up\n "
+    ),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    limits = SUMMARY_ACCURACY_LIMITS,
+    breaks = SUMMARY_ACCURACY_BREAKS,
+    labels = scales::label_number(accuracy = 1),
+    expand = expansion(mult = 0)
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    tag = "A",
+    title = "Accuracy across phases",
+    subtitle = NULL,
+    x = NULL,
+    y = "Accuracy (%)"
+  ) +
+  theme_figure5() +
+  theme(
+    legend.position = "inside",
+    legend.position.inside = c(0.05, 0.98),
+    legend.justification = c("left", "top"),
+    plot.margin = margin(4, 8, 4, 4),
+    plot.tag.position = c(0.02, 0.955)
+  ) +
+  guides(
+    colour = guide_legend(
+      title = "Label",
+      title.position = "top",
+      title.hjust = 0,
+      override.aes = list(
+        linewidth = 0,
+        linetype = 0,
+        fill = unname(GROUP_COLORS),
+        colour = unname(GROUP_COLORS),
+        shape = unname(GROUP_SHAPES),
+        size = POINT_SIZE,
+        stroke = POINT_STROKE
+      )
+    ),
+    fill = "none",
+    shape = "none"
+  )
+```
+
+## Panel b: Attrition sensitivity test
+
+```{r panel-b-data, message=FALSE, warning=FALSE}
+df_12_1 <- data_preprocessing(
+  data = data_filtered2,
+  label_col = c(
+    "stage1_task0_accuracy",
+    "stage2_task0_accuracy",
+    "stage3_task0_accuracy"
+  ),
+  new_columns_name = c("Stage1", "Stage2", "Stage3"),
+  data_columns = c("Stage1", "Stage2", "Stage3"),
+  one_names_values = "Phase",
+  one_values_values = "Accuracy",
+  after_columns_name = c(
+    "Stage 1: Independent work",
+    "Stage 2: LLM-guided practice",
+    "Stage 3: LLM-provided answers"
+  ),
+  phase_subtitle_name = c(
+    "Independent \n work",
+    "LLM-guided \n practice",
+    "LLM-provided \n answers"
+  ),
+  phase_short_name = c("Stage 1", "Stage 2", "Stage 3"),
+  groupby_col = NULL
+)
+
+df_12_2 <- data_preprocessing(
+  data = data_filtered,
+  label_col = c(
+    "stage1_task0_accuracy",
+    "stage2_task0_accuracy",
+    "stage3_task0_accuracy"
+  ),
+  new_columns_name = c("Stage1", "Stage2", "Stage3"),
+  data_columns = c("Stage1", "Stage2", "Stage3"),
+  one_names_values = "Phase",
+  one_values_values = "Accuracy",
+  after_columns_name = c(
+    "Stage 1: Independent work",
+    "Stage 2: LLM-guided practice",
+    "Stage 3: LLM-provided answers"
+  ),
+  phase_subtitle_name = c(
+    "Independent \n work",
+    "LLM-guided \n practice",
+    "LLM-provided \n answers"
+  ),
+  phase_short_name = c("Stage 1", "Stage 2", "Stage 3"),
+  groupby_col = NULL
+)
+
+df_12_1_plot <- df_12_1$stats_summary
+df_12_2_plot <- df_12_2$stats_summary
+df_12_1_plot$Label <- "Follow-up completers"
+df_12_2_plot$Label <- "All participants"
+
+df_combined <- bind_rows(df_12_1_plot, df_12_2_plot) %>%
+  mutate(
+    Phase_short = factor(
+      Phase_short,
+      levels = c("Stage 1", "Stage 2", "Stage 3")
+    ),
+    Label = factor(
+      Label,
+      levels = c("Follow-up completers", "All participants")
+    ),
+    x_plot = as.numeric(Phase_short),
+    mean_pct = mean * 100,
+    ci_pct = ci95 * 100
+  ) %>%
+  filter(!is.na(x_plot))
+```
+
+```{r panel-b-plot, message=FALSE, warning=FALSE}
+attrition_labels <- c(
+  "Follow-up completers<br>(<i>n</i> = 84)",
+  "All participants<br>(<i>n</i> = 175)"
+)
+
+fig12 <- ggplot(df_combined, aes(x = x_plot, y = mean_pct)) +
+  geom_hline(
+    yintercept = 50,
+    linetype = "dashed",
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_linerange(
+    aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct),
+    colour = "black",
+    linewidth = ERROR_LINE_SIZE
+  ) +
+  geom_line(
+    aes(group = Label, linetype = Label),
+    colour = "black",
+    linewidth = DATA_LINE_SIZE
+  ) +
+  geom_point(
+    aes(shape = Label, fill = Label),
+    colour = "black",
+    size = POINT_SIZE,
+    stroke = POINT_STROKE
+  ) +
+  scale_shape_manual(
+    values = c("All participants" = 21, "Follow-up completers" = 21),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_fill_manual(
+    values = c("All participants" = "black", "Follow-up completers" = "white"),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_linetype_manual(
+    values = c("All participants" = "solid", "Follow-up completers" = "dashed"),
+    labels = attrition_labels,
+    name = NULL
+  ) +
+  scale_x_continuous(
+    limits = c(0.85, 3.15),
+    breaks = 1:3,
+    labels = c("Stage 1", "Stage 2", "Stage 3"),
+    expand = expansion(mult = 0)
+  ) +
+  scale_y_continuous(
+    limits = SUMMARY_ACCURACY_LIMITS,
+    breaks = SUMMARY_ACCURACY_BREAKS,
+    labels = scales::label_number(accuracy = 1),
+    expand = expansion(mult = 0)
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    tag = NULL,
+    title = "Attrition sensitivity test",
+    subtitle = "Collapsed across labels",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_figure5() +
+  theme(
+    legend.position = "inside",
+    legend.position.inside = c(0.05, 0.98),
+    legend.justification = c("left", "top"),
+    legend.text = ggtext::element_markdown(hjust = 0, lineheight = 0.95),
+    legend.key.height = grid::unit(13, "pt"),
+    legend.key.spacing.y = grid::unit(4, "pt"),
+    plot.margin = margin(4, 10, 4, 2),
+    plot.tag.position = c(0.03, 0.955)
+  ) +
+  guides(
+    fill = guide_legend(
+      nrow = 2,
+      byrow = TRUE,
+      override.aes = list(
+        shape = 21,
+        size = POINT_SIZE,
+        stroke = POINT_STROKE
+      )
+    ),
+    shape = "none",
+    linetype = "none"
+  )
+```
+
+## Panel c: Early- versus late-corrected items
+
+```{r panel-c-data, message=FALSE, warning=FALSE}
+df_correction <- read_csv("data/Correction_Data.csv", show_col_types = FALSE)
+correction_contrasts <- read_csv(
+  "data/Correction_Timing_Contrasts.csv",
+  show_col_types = FALSE
+)
+
+p_values <- correction_contrasts %>%
+  transmute(
+    Label,
+    label_text = if_else(
+      p.value < 0.001,
+      "italic(P)~'< 0.001'",
+      paste0("italic(P)~'= ", sprintf("%.3f", p.value), "'")
+    )
+  )
+
+morey_sum <- summarySEwithin(
+  data = df_correction,
+  measurevar = "Measure",
+  withinvars = "Group",
+  betweenvars = "Label",
+  idvar = "ID",
+  na.rm = TRUE,
+  conf.interval = 0.95
+)
+```
+
+```{r panel-c-plot, message=FALSE, warning=FALSE}
+fig13 <- ggplot(df_correction, aes(x = Group, y = Measure)) +
+  geom_hline(
+    yintercept = 50,
+    linetype = "dashed",
+    colour = "grey55",
+    linewidth = LINE_SIZE
+  ) +
+  geom_line(
+    aes(group = ID),
+    colour = "grey82",
+    alpha = 0.65,
+    linewidth = LINE_SIZE
+  ) +
+  geom_line(
+    data = morey_sum,
+    aes(x = Group, y = Measure, group = 1, colour = Label),
+    linewidth = DATA_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_linerange(
+    data = morey_sum,
+    aes(
+      x = Group,
+      y = Measure,
+      ymin = Measure - ci,
+      ymax = Measure + ci,
+      colour = Label
+    ),
+    linewidth = ERROR_LINE_SIZE,
+    inherit.aes = FALSE
+  ) +
+  geom_point(
+    data = morey_sum,
+    aes(x = Group, y = Measure, colour = Label, fill = Label, shape = Label),
+    size = POINT_SIZE,
+    stroke = POINT_STROKE,
+    inherit.aes = FALSE
+  ) +
+  geom_text(
+    data = p_values,
+    aes(x = 1.5, y = 96, label = label_text),
+    family = FONT_FAMILY,
+    size = FONT_SIZE_GEOM,
+    parse = TRUE,
+    colour = "black",
+    inherit.aes = FALSE
+  ) +
+  facet_wrap(~Label, nrow = 1) +
+  scale_colour_manual(values = c(
+    "AI" = GROUP_COLORS[["AI"]],
+    "AI + Human" = GROUP_COLORS[["AI Human"]],
+    "Human" = GROUP_COLORS[["Human"]]
+  )) +
+  scale_fill_manual(values = c(
+    "AI" = GROUP_COLORS[["AI"]],
+    "AI + Human" = GROUP_COLORS[["AI Human"]],
+    "Human" = GROUP_COLORS[["Human"]]
+  )) +
+  scale_shape_manual(values = c(
+    "AI" = 21,
+    "AI + Human" = 22,
+    "Human" = 24
+  )) +
+  scale_x_discrete(
+    labels = c("Early-corrected" = "Early", "Late-corrected" = "Late"),
+    expand = expansion(add = 0.22)
+  ) +
+  scale_y_continuous(
+    limits = ACCURACY_LIMITS,
+    breaks = ACCURACY_BREAKS,
+    labels = scales::label_number(accuracy = 1),
+    expand = expansion(mult = 0)
+  ) +
+  coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
+  labs(
+    tag = "B",
+    title = "Follow-up accuracy for early- (Stage 2)",
+    subtitle = "versus late-corrected (Stage 3) items",
+    x = NULL,
+    y = NULL
+  ) +
+  theme_figure5() +
+  theme(
+    legend.position = "none",
+    panel.spacing = grid::unit(4, "pt"),
+    plot.subtitle = element_text(face = "bold"),
+    plot.tag.position = c(0.02, 0.955)
+  )
+```
+
+## Combine and export
+
+```{r combine-and-export, message=FALSE, warning=FALSE}
+combined_core <- fig11 + fig12 + fig13 +
+  plot_layout(nrow = 1, widths = c(0.42, 0.28, 0.45)) &
+  theme(
+    plot.tag = element_text(size = TAG_SIZE_PT, face = "bold")
+  )
+
+BRACKET_COLOR <- "grey55"
+SAMPLE_SIZE_LABEL_Y <- 0.040
+BRACKET_Y <- SAMPLE_SIZE_LABEL_Y
+STAGE_1_X <- 0.0788
+STAGE_3_X <- 0.2521
+FOLLOW_UP_X <- 0.3370
+STAGE_GROUP_CENTER_X <- (STAGE_1_X + STAGE_3_X) / 2
+BRACKET_TEXT_GAP <- 0.031
+STAGE_GROUP_N_Y <- SAMPLE_SIZE_LABEL_Y
+FOLLOW_UP_N_Y <- SAMPLE_SIZE_LABEL_Y
+
+combined_figure <- ggdraw(combined_core) +
+  draw_line(
+    x = c(STAGE_1_X, STAGE_GROUP_CENTER_X - BRACKET_TEXT_GAP),
+    y = c(BRACKET_Y, BRACKET_Y),
+    colour = BRACKET_COLOR,
+    size = LINE_SIZE
+  ) +
+  draw_line(
+    x = c(STAGE_GROUP_CENTER_X + BRACKET_TEXT_GAP, STAGE_3_X),
+    y = c(BRACKET_Y, BRACKET_Y),
+    colour = BRACKET_COLOR,
+    size = LINE_SIZE
+  ) +
+  draw_label(
+    expression(italic(n) == 175),
+    x = STAGE_GROUP_CENTER_X,
+    y = STAGE_GROUP_N_Y,
+    fontfamily = FONT_FAMILY,
+    size = FONT_SIZE_PT,
+    colour = "black"
+  ) +
+  draw_label(
+    expression(italic(n) == 84),
+    x = FOLLOW_UP_X,
+    y = FOLLOW_UP_N_Y,
+    fontfamily = FONT_FAMILY,
+    size = FONT_SIZE_PT,
+    colour = "black"
+  )
+
+combined_figure
+
+ggsave(
+  "figure/Figure_Study2_1.pdf",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  device = cairo_pdf,
+  family = FONT_FAMILY,
+  symbolfamily = FONT_FAMILY,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study2_1.png",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  dpi = 300,
+  bg = "white"
+)
+
+ggsave(
+  "figure/Figure_Study2_1.svg",
+  combined_figure,
+  width = FIGURE_WIDTH_IN,
+  height = FIGURE_HEIGHT_IN,
+  bg = "white"
+)
+```
+
+## Reproducibility
+
+```{r session-info}
+sessionInfo()
+```
