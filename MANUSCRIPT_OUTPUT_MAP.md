@@ -1,11 +1,11 @@
 # Manuscript and SI output map
 
 This map is keyed to the computational content of the authoritative manuscript
-files synchronized and audited on 2026-08-31. The authoring DOCX files are not
+files synchronized and audited on 2026-09-01. The authoring DOCX files are not
 deposited; the hashes identify the exact versions used for this release:
 
-- `Main.docx`: SHA-256 `67f3e0c235f735b93a37b9d54b0392672d7da1741e0fdee68721502eb9ad5f1d`
-- `SI.docx`: SHA-256 `34ae17f28f0f96986e889617b4ef29c3cafe08bc0d0063dd02157f6b8e551a81`
+- `Main.docx`: SHA-256 `3b10973295ac8cb0a48581575d6230379bde1c858bad7956b94f2409d47de801`
+- `SI.docx`: SHA-256 `5fcd5b3edbd93beebdca2856e7be1167f680f1c5863357b2419a52fdab4b5101`
 
 The manuscript version mapped for this release has Figures 1–6 and no numbered
 tables. Its SI has Texts S1–S4, Fig. S1, and Tables S1–S21. Run

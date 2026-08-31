@@ -3,8 +3,8 @@ message: "If you use these data, materials, code, or outputs, please cite this r
 type: dataset
 title: "Source labels change the timing of accuracy gains with identical AI-generated explanations of statistical concepts"
 repository-code: "https://github.com/ZhichengLin/LLM-in-Statistical-Learning"
-version: "1.0.0"
-date-released: "2026-08-31"
+version: "1.0.1"
+date-released: "2026-09-01"
 authors:
   - family-names: Xu
     given-names: Yuhong
