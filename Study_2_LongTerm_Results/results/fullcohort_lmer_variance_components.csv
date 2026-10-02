@@ -1,0 +1,15 @@
+"model","measure","component","variance","sd","at_boundary"
+"historical_structure","accuracy","ID",0.0126094673469202,0.112291884599557,FALSE
+"historical_structure","accuracy","Residual",0.062701557484611,0.250402790488866,FALSE
+"task_dependence","accuracy","ID:Task",0.00486148980526979,0.0697243845815063,FALSE
+"task_dependence","accuracy","ID",0.0122970222529812,0.110891939531154,FALSE
+"task_dependence","accuracy","Task",0.0144252771095386,0.120105275111206,FALSE
+"task_dependence","accuracy","Residual",0.0486803288656121,0.220636191196304,FALSE
+"task_adjusted","accuracy","ID:Task",0.0046347910942176,0.0680793000420657,FALSE
+"task_adjusted","accuracy","ID",0.012335999111843,0.111067543017044,FALSE
+"task_adjusted","accuracy","Task",0.0141891677831678,0.119118293234783,FALSE
+"task_adjusted","accuracy","Residual",0.0489251799357767,0.221190370350467,FALSE
+"task_adjusted","confidence","ID:Task",0,0,TRUE
+"task_adjusted","confidence","ID",0.213873141778052,0.462464205942527,FALSE
+"task_adjusted","confidence","Task",0.0016104297219228,0.0401301597545138,FALSE
+"task_adjusted","confidence","Residual",0.2634273553337,0.51325174654715,FALSE

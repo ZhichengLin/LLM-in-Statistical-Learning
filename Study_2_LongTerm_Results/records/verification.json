@@ -1,0 +1,349 @@
+{
+  "status": "QUALIFIED",
+  "numerical_status": "PASS",
+  "model_diagnostic_status": "FAIL",
+  "failed_model_diagnostics": [
+    "full-cohort GLS: requested Satterthwaite-type df obtained (strict; df.error fallback when apVar is not a matrix = FAIL)",
+    "full-cohort lmer: every fit nonsingular (strict; boundary variance components reported)"
+  ],
+  "status_rule": "numerical/reproduction checks block; strict model diagnostics are never relaxed: a failed diagnostic is retained as FAIL and the run is QUALIFIED (estimates delivered with the explicit limitation)",
+  "checks": [
+    {
+      "check": "paired n/means/estimate/SE/t/P recomputed in Python (30 rows, Python eligibility rule)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "n": 0,
+        "estimate": 4.996003610813204e-16,
+        "SE": 4.440892098500626e-16,
+        "t": 6.217248937900877e-15,
+        "p": 6.661338147750939e-15,
+        "means": 4.440892098500626e-15
+      }
+    },
+    {
+      "check": "Holm families recomputed in Python (10 families of 3)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "families": 10,
+        "max_abs_diff": 1.1102230246251565e-16
+      }
+    },
+    {
+      "check": "bootstrap intervals bracket the estimate; B = 5000; seed 20260930 (all rows)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "rows": 30
+      }
+    },
+    {
+      "check": "LT-M1 rows of eligible39 families equal primary33 rows (same 33 pairs)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "compared_families": 3
+      }
+    },
+    {
+      "check": "positive controls: primary33 rows = prior s38_no_tools (all columns); eligible39 = prior all44_no_tools (deterministic)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "primary33_max_abs_diff": 0.0,
+        "eligible39_max_abs_diff": 0.0
+      }
+    },
+    {
+      "check": "sample-flow counts and label splits equal the contract",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "counts": {
+          "cohort175": 175,
+          "one_month_completers_original": 84,
+          "longterm_returns": 44,
+          "excluded_reported_tool_use": 5,
+          "excluded_unknown_tool_use": 0,
+          "eligible39": 39,
+          "primary33": 33,
+          "additional6": 6,
+          "cohort170": 170,
+          "one_month_eligible": 79,
+          "covariate_complete": 168,
+          "primary33_no_prior_exposure": 23,
+          "eligible39_no_prior_exposure": 29,
+          "one_month_only": 46,
+          "neither_followup": 85
+        },
+        "splits": {
+          "eligible39": [
+            19,
+            12,
+            8
+          ],
+          "primary33": [
+            16,
+            10,
+            7
+          ],
+          "cohort170": [
+            59,
+            58,
+            53
+          ],
+          "excluded_reported_tool_use": [
+            0,
+            0,
+            5
+          ],
+          "one_month_eligible": [
+            29,
+            24,
+            26
+          ]
+        }
+      }
+    },
+    {
+      "check": "timing sample counts equal independent QC eligibility counts",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "primary33": {
+          "responses": 204,
+          "participants": 32,
+          "early": 105,
+          "late": 99,
+          "both_categories": 23
+        },
+        "eligible39": {
+          "responses": 241,
+          "participants": 37,
+          "early": 125,
+          "late": 116,
+          "both_categories": 26
+        }
+      }
+    },
+    {
+      "check": "timing fits: no singularity, separation, convergence or profile warnings; item intercept retained",
+      "category": "model_diagnostic",
+      "pass": true,
+      "detail": {
+        "samples": 2
+      }
+    },
+    {
+      "check": "correction-timing positive controls (same-participant prior fits)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "rows": 10
+      }
+    },
+    {
+      "check": "paired positive controls (R)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "rows": 12
+      }
+    },
+    {
+      "check": "independent R model recomputation (verify_models.csv)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "checks": 15
+      }
+    },
+    {
+      "check": "all-fit membership audit: every object matches its contracted set; zero excluded participants",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "objects": 64,
+        "fitted_models": 20
+      }
+    },
+    {
+      "check": "GLS33/GLS39: unstructured covariance, apVar available, appx-Satterthwaite df, positive-definite covariance",
+      "category": "model_diagnostic",
+      "pass": true,
+      "detail": {
+        "gls33": {
+          "covariance": "unstructured",
+          "apVar_available": "TRUE",
+          "df_mode": "appx-satterthwaite",
+          "min_eigen_cov": "0.00969467175983561"
+        },
+        "gls39": {
+          "covariance": "unstructured",
+          "apVar_available": "TRUE",
+          "df_mode": "appx-satterthwaite",
+          "min_eigen_cov": "0.010394842565892"
+        }
+      }
+    },
+    {
+      "check": "full-cohort GLS: unstructured covariance retained (no fallback)",
+      "category": "model_diagnostic",
+      "pass": true,
+      "detail": {
+        "accuracy_unadjusted": "unstructured",
+        "accuracy_adjusted": "unstructured",
+        "confidence_adjusted": "unstructured"
+      }
+    },
+    {
+      "check": "full-cohort GLS: requested Satterthwaite-type df obtained (strict; df.error fallback when apVar is not a matrix = FAIL)",
+      "category": "model_diagnostic",
+      "pass": false,
+      "detail": {
+        "accuracy_unadjusted": {
+          "requested": "satterthwaite",
+          "effective": "df.error",
+          "apVar_available": "FALSE",
+          "apVar_message": "Non-positive definite approximate variance-covariance",
+          "df_error_used": "599"
+        },
+        "accuracy_adjusted": {
+          "requested": "satterthwaite",
+          "effective": "appx-satterthwaite",
+          "apVar_available": "TRUE",
+          "apVar_message": "",
+          "df_error_used": ""
+        },
+        "confidence_adjusted": {
+          "requested": "satterthwaite",
+          "effective": "appx-satterthwaite",
+          "apVar_available": "TRUE",
+          "apVar_message": "",
+          "df_error_used": ""
+        }
+      }
+    },
+    {
+      "check": "full-cohort lmer: every fit nonsingular (strict; boundary variance components reported)",
+      "category": "model_diagnostic",
+      "pass": false,
+      "detail": {
+        "historical_structure accuracy": {
+          "singular": "FALSE",
+          "boundary_components": "",
+          "effective_df_mode": "kenward-roger"
+        },
+        "task_dependence accuracy": {
+          "singular": "FALSE",
+          "boundary_components": "",
+          "effective_df_mode": "kenward-roger"
+        },
+        "task_adjusted accuracy": {
+          "singular": "FALSE",
+          "boundary_components": "",
+          "effective_df_mode": "kenward-roger"
+        },
+        "task_adjusted confidence": {
+          "singular": "TRUE",
+          "boundary_components": "ID:Task",
+          "effective_df_mode": "kenward-roger"
+        }
+      }
+    },
+    {
+      "check": "record: spread of approximate-Satterthwaite df/P/CI across the pipeline RNG state and two fixed seeds (not graded)",
+      "category": "diagnostic_record",
+      "pass": true,
+      "detail": {
+        "GLS39 label-balanced LT-S1": {
+          "df_range": [
+            33.947,
+            34.056
+          ],
+          "max_abs_d_p": 6.964959634669834e-06,
+          "max_abs_d_ci_bound": 1.0936827282009842e-05
+        },
+        "GLS39 label-balanced LT-S3": {
+          "df_range": [
+            36.256,
+            36.436
+          ],
+          "max_abs_d_p": 1.8414754393229868e-06,
+          "max_abs_d_ci_bound": 1.585148172300599e-05
+        },
+        "GLS39 label-balanced LT-M1": {
+          "df_range": [
+            32.41,
+            32.817
+          ],
+          "max_abs_d_p": 4.4213585848051906e-05,
+          "max_abs_d_ci_bound": 3.770775699389606e-05
+        },
+        "full-cohort GLS accuracy_adjusted LT-S1": {
+          "df_range": [
+            53.722,
+            56.401
+          ],
+          "max_abs_d_p": 3.246292721175899e-07,
+          "max_abs_d_ci_bound": 8.013738336398735e-05
+        },
+        "full-cohort GLS accuracy_adjusted LT-S3": {
+          "df_range": [
+            53.471,
+            55.625
+          ],
+          "max_abs_d_p": 3.747072108729098e-08,
+          "max_abs_d_ci_bound": 6.454243946599214e-05
+        },
+        "full-cohort GLS accuracy_adjusted LT-M1": {
+          "df_range": [
+            39.466,
+            40.961
+          ],
+          "max_abs_d_p": 0.00021227433378990038,
+          "max_abs_d_ci_bound": 7.742541714800266e-05
+        },
+        "full-cohort GLS confidence_adjusted LT-S1": {
+          "df_range": [
+            45.461,
+            47.176
+          ],
+          "max_abs_d_p": 7.93710205651099e-06,
+          "max_abs_d_ci_bound": 0.00017073134433800985
+        },
+        "full-cohort GLS confidence_adjusted LT-S3": {
+          "df_range": [
+            49.394,
+            50.068
+          ],
+          "max_abs_d_p": 7.05550966701024e-05,
+          "max_abs_d_ci_bound": 5.578991488497387e-05
+        },
+        "full-cohort GLS confidence_adjusted LT-M1": {
+          "df_range": [
+            37.815,
+            38.497
+          ],
+          "max_abs_d_p": 0.00012499172001840392,
+          "max_abs_d_ci_bound": 9.875014543103688e-05
+        }
+      }
+    },
+    {
+      "check": "df seed diagnostic: estimates and SEs equal the pipeline values across RNG states (27 rows, 9 contrasts)",
+      "category": "numerical",
+      "pass": true,
+      "detail": {
+        "rows": 27
+      }
+    },
+    {
+      "check": "every reported CI brackets its estimate",
+      "category": "numerical",
+      "pass": true,
+      "detail": {}
+    }
+  ]
+}

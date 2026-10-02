@@ -1,0 +1,50 @@
+{
+  "verdict": "READY",
+  "reasons": [],
+  "scope": "deposited-data reproduction; historical acquisition and private linkage are outside this gate",
+  "inputs": {
+    "data/cohort.csv": "0dbb6eb1cc4d87f609e54a1f05a0139434fc1685a91fdd3cea9da63378cb5e98",
+    "data/items.csv": "687f6829e15bde831afbd42ead1e2d7c816195458dde1bd93a01c6bb10f3ea72",
+    "data/intervals.csv": "c2276cb75f1b872ae603104c96220b5adf0fea412e4e37bc3392c65a226f9a24",
+    "historical_controls/p38_paired_contrasts.csv": "bcf4756d8c8baa8d6c346924ba8ba0b478398e7d33c2260e1bfe66ac09fd6116",
+    "historical_controls/p38_correction_timing.csv": "d473c2040c656d80fe47ed90528c0a6ee189c434d2e1881d7e6e360de37dddfc",
+    "historical_controls/p44_correction_timing.csv": "c1d0dab2e5c7d54126606540e43c014c9bf53eca80bbe714f2b059570d9597b8",
+    "../Study_2_Early_Late_Correction/data/correction_raw_data.xlsx": "dc16262896a38c698e2500db48ae3f9b52e1c2c282cf927f7b5d1771f580a064",
+    "historical_controls/all44_interval_summary.csv": "2ec65ff241ce413faadf41e57bd0a3f1273841d811579daa9e263266f72ef51d"
+  },
+  "model_lock_sha256": "905494ac89dff18171cb38b30d7b2cc3484fa723ae5d9483d1b1b97a514edfe8",
+  "manifest_sha256": "62bcf3065af63f22e84814d7d8dcc663da0b5a2a73ed293d180073d6c2f86f6f",
+  "contract_sha256": "a254610350e9f36ea6d6ad369ab49878fbe7b5a853c662b69c1d1979aaa762e0",
+  "code": {
+    "../run.R": "5075b327c47b86cdb63363a2f2da826c2e72a39e6cb67519a48824bce09907ad",
+    "analysis.R": "4bf78c0b29b752707b8e66392de2c106a1962895fe3cbb5c6ac72649bedf1f75",
+    "audit_fit_membership.R": "3c51d9fb9522cdcd916ea7ff28d0778120d4f78fb3cd0d0053ffbe83c11f08c0",
+    "auxiliary_counts.py": "25f306897737948e7476e231bbb2b66d9b24563ccf5af5cbbc180db9232d0b07",
+    "bind_ready.py": "af4755cb744e8949af8fbf6bf67f6c29f31d80998bcd41cff3b177ab90cd4095",
+    "build_qc_report.py": "7667322e88cfb5addf366d619d5cfce51bc393ca7149938707ef2500b306eacc",
+    "build_supplementary_tables.py": "0315082ea02cccc31316b56fd53c06f39de387b80b67c609976d8edbfdb52f30",
+    "common.py": "d2d31a3026acbee5d3775cbba8ab77df5528b0eea43d78446ccf93630e94cfca",
+    "df_seed_sensitivity.R": "c42c78a831cb104b0f74d95d78f4fa75760e9cf17137c59b9d75fee051e712d1",
+    "eligibility.R": "d5305b2bca99b31fcdef63d15dfb3d27ff8fee81c8f8675366dbeda3cd10b00b",
+    "fullcohort_models.R": "c444101bae6626c1b56d73ec2d11c8d1d3cfdc8306c4230e20c25a35832e4d6a",
+    "gate_requirements.json": "a0041dc42bb4378636c7414b60052be9a22497ce5b256411206de9a7005afe70",
+    "guard.R": "a8af7dfa8654c69e0661a899dd51cc75a03caa2b89514a203095c8d70f2f5951",
+    "qc_checks.py": "dc527d58b4a736353e1a36b694ca1b4051d3c51d941608e3d8a90953195eaf73",
+    "qc_m1_scoring.R": "9e9f11de3556b44e83e538d6385063457acaa7d39caf57fbd8a4d56e44399fab",
+    "test_entry_guard.py": "3d4ba8c9e720ce34bde29f881c2d9eddf11cd7868df0ef746706e001e00d47e7",
+    "test_qc_fixtures.py": "60b32630e56fb884ca42d58f32d8b4a1bee2286338fd92ab81a99decee07c707",
+    "verify_inputs.py": "20dae02e7d3f2c0f2b76d8cd273a4746f936459e60d54d62a6fff3ecc05bd1fd",
+    "verify_models.R": "f76fa1b1a43938d4c1e8113930f83eec63886d0f40700b74f02fcb9b2db654af",
+    "verify_outputs.py": "94af8aade964d460af3010ab04610849d183fa1641c7086cb4667d67ed10fd87"
+  },
+  "records": {
+    "records/qc_summary.json": "51358f849d4f8eb77ce37f5b5fc971b1327675958efc79310ddf2d04587b9c3c",
+    "records/qc_checks.csv": "4359a0ff1f37e1b64538a394e1bfbd5f75baccd4a13a0f1bbf81c5aa8329254d",
+    "records/qc_fixture_results.csv": "e868d09794b4bf8697c24868631061627283f3af1ae28593984ee5a051a57cd6",
+    "records/qc_m1_scoring.csv": "68e7eeae26fd1a77cb4bdc6674612bb1284285315d7656a1d6ffc2e11a3bdc48",
+    "records/guard_tests.csv": "2a3ce5a5849722622d02ec5da1a1c43394397aee34698742e5bd16a3a26e3319",
+    "records/input_verification.json": "343a76c67afb6ea90af82257f03343404f21586abb44bd2e841c8f783281035e",
+    "records/contract_freeze.json": "7849549fdcece745782830c2fcf92ab85f5f6ceb45af9691213015cf4b86ad7b",
+    "private/qc_fingerprints.json": "121e2396dde562de26e6281791da12c177ba51f9fb82ce8fc32a981573777f36"
+  }
+}

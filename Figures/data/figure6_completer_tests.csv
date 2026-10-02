@@ -1,0 +1,7 @@
+"panel","sample","label","measure","contrast","p.value","displayed","n_initial_sample","n_followup_completers","n_model_participants","n_model_observations","model_name"
+"B willingness","Completers","AI","willing","stage3 - stage2",0.164704716728123,"italic(P)~'= 0.165'",175,84,84,504,"Figure6_willing_original_completer_lmer"
+"B willingness","Completers","AI Human","willing","stage3 - stage2",0.103530612182532,"italic(P)~'= 0.104'",175,84,84,504,"Figure6_willing_original_completer_lmer"
+"B willingness","Completers","Human","willing","stage3 - stage2",0.900114946312262,"italic(P)~'= 0.900'",175,84,84,504,"Figure6_willing_original_completer_lmer"
+"C usefulness","Completers","AI","useful","stage3 - stage2",0.264137267922507,"italic(P)~'= 0.264'",175,84,84,504,"Figure6_useful_original_completer_lmer"
+"C usefulness","Completers","AI Human","useful","stage3 - stage2",0.013570894761042,"italic(P)~'= 0.014'",175,84,84,504,"Figure6_useful_original_completer_lmer"
+"C usefulness","Completers","Human","useful","stage3 - stage2",0.268169453673782,"italic(P)~'= 0.268'",175,84,84,504,"Figure6_useful_original_completer_lmer"

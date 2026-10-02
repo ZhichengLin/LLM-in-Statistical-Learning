@@ -3,13 +3,16 @@
 This dictionary describes every deposited analysis input used by the notebooks
 and figures. It records the physical file dimensions, analytic exclusions,
 missing-value conventions, variable meanings, derived fields, and duplicate
-lineages. The current analysis inputs begin after the Study 2 completion and
+lineages, including the exploratory 14-month extension added on 2026-10-03.
+The original analysis inputs begin after the Study 2 completion and
 attention screens; they cannot reconstruct the earlier flow from 220 randomized
 participants to 178 deposited records.
 
 All participant and rater identifiers are pseudonymous. Missing values are
 stored as blank cells; there are no textual `NA` values or sentinel codes. No
-deposited workbook contains formulas.
+deposited workbook contains formulas. In the new long-term CSVs, blank outcomes
+also represent the explicitly documented suppression of ineligible returners;
+the return and tool-use flags distinguish suppression from nonreturn.
 
 ## Input inventory
 
@@ -33,6 +36,13 @@ one worksheet.
 | `Study_2_Early_Late_Correction/data/manipulation_recall.xlsx` | `Sheet1`, 178 × 2 | participant; `ID` | Exact `ID + Recalled_Label` projection of the main data |
 | `Figures/data/Correction_Data.csv` | 145 × 5 | participant × correction-timing group; `ID + Group` | Derived by `Comparison.Rmd`; 565 item observations from 82 participants are aggregated to these 145 rows |
 | `Figures/data/Correction_Timing_Contrasts.csv` | 3 × 10 | one Early/Late contrast per assigned label | Derived model output used for Figure 5 annotations |
+| `Study_2_LongTerm_Results/data/cohort.csv` | 175 × 53 | original analytic participant; `ID` | Public derivative with historical outcomes, long-term eligibility/return flags, and eligible long-term outcomes |
+| `Study_2_LongTerm_Results/data/items.csv` | 2,975 × 10 | participant × scored item; `ID + Item` | 175 × 17 historical item-scoring rows; long-term correctness present for eligible returners only |
+| `Study_2_LongTerm_Results/data/intervals.csv` | 39 × 2 | eligible long-term participant; `ID` | Elapsed initial-to-long-term days rounded to 0.1 day; no calendar dates |
+| `Study_2_LongTerm_Results/historical_controls/p38_paired_contrasts.csv` | 12 rows | aggregate sample × measure × contrast | Frozen positive-control rows for the same eligible 33/39 people; preceding package labels retained as historical aliases |
+| `Study_2_LongTerm_Results/historical_controls/p38_correction_timing.csv` | 1 row | aggregate correction-timing fit | Frozen eligible-33 positive control; no participant-level rows |
+| `Study_2_LongTerm_Results/historical_controls/p44_correction_timing.csv` | 1 row | aggregate correction-timing fit | Frozen eligible-39 positive control; no participant-level rows |
+| `Study_2_LongTerm_Results/historical_controls/all44_interval_summary.csv` | 1 × 6 | aggregate elapsed-day summary | Retained original-44 administrative interval metadata; no outcomes or calendar dates |
 
 The self-contained folder design intentionally duplicates several inputs. The
 release audit verified equality at the level stated above: byte-identical where
@@ -200,14 +210,102 @@ Aggregation by `ID + Label + CorrectionTiming` produces the 145 rows in
 
 ## Provenance and data scope
 
+### Exploratory 14-month extension
+
+The public derivative begins with the original analytic 175-person cohort,
+after the three baseline ceiling exclusions. Original 175/84 analyses use
+their original workbooks and are not retrospectively changed by long-term
+eligibility. The extension has a separate input manifest and retrospective
+analysis contract at `Study_2_LongTerm_Results/`.
+
+| Cohort field or pattern | Definition and missingness |
+|---|---|
+| `ID` | Sequential numeric public linkage key, 1001–1175, preserving source participant order; no source-key crosswalk is deposited |
+| `Label` | Original randomized description, `AI`, `AI Human`, or `Human`; the display label for `AI Human` is AI + Human |
+| `completed_1month` | 1 for the 84 original analytic one-month completers; 0 for the other 91 |
+| `follow2_returned` | 1 for all 44 recorded long-term returns, including five excluded for reported assistance; 0 for 131 nonreturners |
+| `follow2_tool_use` | Exact `no` for 39 eligible returns, `yes` for five excluded returns, blank for nonreturners; only a trimmed, case-sensitive `no` is eligible |
+| `follow2_prior_exposure` | Prior similar-item exposure: `yes`, `unsure`, or `no`; deposited only for the 39 eligible returners |
+| `follow2_attention_passed` | Recorded long-term attention flag, 1 for each eligible returner; blank outside eligible 39; not evidence for reconstructing original screening |
+| `follow2_item_order` | Recorded `fixed` or `randomized` order, 18/21 among eligible 39; blank outside eligible 39 |
+| `follow2_source_recall` | `AI`, `AI Human`, `Human`, or `dont_remember`; deposited only for eligible 39; source-recall classification is computed against assigned `Label` |
+| `Age`, `Gender`, `Field` | Original categorical covariates, retaining original levels; no exact age or date of birth |
+| `Used_LLM_Hours` | Original hours categories, preserving the executed collapse: `1–5`/`6–10` → Low; `11–20`/`>20` → High; `0` → None if present; blank remains missing |
+| `stage[1-3]_task[0-3]_accuracy`, `stage[1-3]_task[0-3]_confidence` | Original analysis-ready accuracy proportions and 1–5 confidence means, observed for all 175 |
+| `follow_task[0-3]_accuracy`, `follow_task[0-3]_confidence` | Original one-month scores, observed for 84 and blank for 91 |
+| `follow2_task[0-3]_accuracy`, `follow2_task[0-3]_confidence` | Eligible long-term scores, observed for 39; blank for 131 nonreturns and five excluded returns |
+
+Auxiliary responses and long-term outcomes of the five excluded returners are
+suppressed. Their original historical outcomes remain in the deposited
+derivative to retain the original cohort and baseline item-difficulty
+definition. No excluded person contributes response rows to a new long-term
+fit; the full-cohort continuation removes all their waves.
+
+| Item field | Definition |
+|---|---|
+| `ID`, `Label` | Public linkage key and original source description, matching `cohort.csv` |
+| `Task` | `t1` P values (6 items), `t2` confidence intervals (5 items), `t3` cross-study comparisons (6 items) |
+| `Item` | Scored item code `t1_q1`–`t1_q6`, `t2_q1`–`t2_q5`, or `t3_q1`–`t3_q6` |
+| `S1`, `S2`, `S3` | Original 0/1 item correctness, not raw Boolean answers |
+| `LT` | 0/1 long-term item correctness for eligible 39; blank otherwise |
+| `baseline` | Original analysis-ready Stage-1 overall accuracy used by the executed correction-timing fit; retains its stored precision |
+| `tool_use` | Long-term tool-use flag synchronized with the cohort file |
+
+`intervals.csv` contains `ID` and numeric `interval_days` for eligible 39 only.
+Elapsed days are rounded to 0.1 day; exact calendar/submission dates are not
+deposited. This privacy transformation preserves all reported one-decimal
+33/39 interval summaries. Eight auxiliary values exported to four decimals
+can differ from the private-input run because of this rounding; duration is
+not an inferential-model input. All outcome values and sample membership are
+preserved. The 33/39 interval summaries are regenerated. Main's historical
+summary for all 44 submissions is deposited in
+`historical_controls/all44_interval_summary.csv` as a retained source record:
+N=44, mean 438.0, SD 4.0, range 429.3–448.1 days (rounded as reported).
+The public 39-person interval input does not regenerate that all-44 summary.
+
+Long-term samples are generated by the shared eligibility rule:
+
+- 44 returns − 5 reported-assistance exclusions = 39 eligible.
+- Primary 33 = eligible 39 with one-month data; assigned labels 16/10/7.
+- Eligible-39 sensitivity labels are 19/12/8; the remaining six participants
+  lack one-month data and are descriptive overall only.
+- Full cohort 170 = original 175 minus all five excluded participants;
+  covariate-complete models use 168.
+- One-month eligible sample is 79; 46 have only one-month data, 85 neither
+  follow-up, and six only eligible long-term data.
+- No-prior-exposure ancillary samples are primary 23 and eligible 29.
+
+Both the both-follow-up primary-sample decision and mandatory tool-use
+exclusion were made after initial long-term results. All extension analyses
+are exploratory and nonpreregistered. Tool-use responses are self-report.
+
+Primary long-term accuracy/confidence is the equal-weight mean of task 1, 2,
+and 3 means. `task0` retains the original overall 17-item weighting and supports
+the separately labeled accuracy sensitivity and current Figs. 5–6. The latter
+plot changing available samples (175/84/33), not matched longitudinal changes.
+
+The input manifest binds all deposited long-term inputs and positive controls.
+QC independently checks schema, keys, missingness, sample relationships,
+item-to-task/cohort scores, and fail-closed eligibility before inference.
+Positive controls compare selected earlier aggregate results; they do not
+represent additional participants, independent replications, or current
+38/44-person long-term estimands.
+
+### Upstream boundaries
+
 - No deposited script regenerates the analysis-ready workbooks from raw survey
   or model-service exports. Their upstream transformation provenance must be
-  supplied separately if required for a public release.
+  supplied separately if full upstream reconstruction is required.
 - The public inputs cannot reproduce the 220→178 completion/attention-screen
   flow, because all 178 deposited rows have `Attention_Check = 1`.
 - Exact initial and follow-up submission timestamps are not deposited.
+- Private long-term roster/email linkage, two unmatched submissions, complete
+  historical platform delivery, and invitation/consent/ethics records are not
+  reconstructed by the deposited statistical workflow. Downstream readiness
+  is scoped to the documented analysis-ready inputs and contracted estimands.
 
 Participant and rater identifiers are pseudonymous numeric keys retained to
 link repeated observations. The deposited package contains no participant
 names, email addresses, telephone numbers, postal addresses, IP addresses,
 exact submission timestamps, or identity crosswalk.
+Pseudonymous repeated-measures data are not claimed to be anonymous.

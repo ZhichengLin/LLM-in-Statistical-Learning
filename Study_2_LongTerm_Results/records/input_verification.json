@@ -1,0 +1,62 @@
+{
+  "all_required_match": true,
+  "manifest_sha256": "62bcf3065af63f22e84814d7d8dcc663da0b5a2a73ed293d180073d6c2f86f6f",
+  "files": [
+    {
+      "path": "../Study_2_Early_Late_Correction/data/correction_raw_data.xlsx",
+      "role": "required",
+      "expected": "dc16262896a38c698e2500db48ae3f9b52e1c2c282cf927f7b5d1771f580a064",
+      "observed": "dc16262896a38c698e2500db48ae3f9b52e1c2c282cf927f7b5d1771f580a064",
+      "match": true
+    },
+    {
+      "path": "data/cohort.csv",
+      "role": "required",
+      "expected": "0dbb6eb1cc4d87f609e54a1f05a0139434fc1685a91fdd3cea9da63378cb5e98",
+      "observed": "0dbb6eb1cc4d87f609e54a1f05a0139434fc1685a91fdd3cea9da63378cb5e98",
+      "match": true
+    },
+    {
+      "path": "data/intervals.csv",
+      "role": "required",
+      "expected": "c2276cb75f1b872ae603104c96220b5adf0fea412e4e37bc3392c65a226f9a24",
+      "observed": "c2276cb75f1b872ae603104c96220b5adf0fea412e4e37bc3392c65a226f9a24",
+      "match": true
+    },
+    {
+      "path": "data/items.csv",
+      "role": "required",
+      "expected": "687f6829e15bde831afbd42ead1e2d7c816195458dde1bd93a01c6bb10f3ea72",
+      "observed": "687f6829e15bde831afbd42ead1e2d7c816195458dde1bd93a01c6bb10f3ea72",
+      "match": true
+    },
+    {
+      "path": "historical_controls/all44_interval_summary.csv",
+      "role": "required",
+      "expected": "2ec65ff241ce413faadf41e57bd0a3f1273841d811579daa9e263266f72ef51d",
+      "observed": "2ec65ff241ce413faadf41e57bd0a3f1273841d811579daa9e263266f72ef51d",
+      "match": true
+    },
+    {
+      "path": "historical_controls/p38_correction_timing.csv",
+      "role": "required",
+      "expected": "d473c2040c656d80fe47ed90528c0a6ee189c434d2e1881d7e6e360de37dddfc",
+      "observed": "d473c2040c656d80fe47ed90528c0a6ee189c434d2e1881d7e6e360de37dddfc",
+      "match": true
+    },
+    {
+      "path": "historical_controls/p38_paired_contrasts.csv",
+      "role": "required",
+      "expected": "bcf4756d8c8baa8d6c346924ba8ba0b478398e7d33c2260e1bfe66ac09fd6116",
+      "observed": "bcf4756d8c8baa8d6c346924ba8ba0b478398e7d33c2260e1bfe66ac09fd6116",
+      "match": true
+    },
+    {
+      "path": "historical_controls/p44_correction_timing.csv",
+      "role": "required",
+      "expected": "c1d0dab2e5c7d54126606540e43c014c9bf53eca80bbe714f2b059570d9597b8",
+      "observed": "c1d0dab2e5c7d54126606540e43c014c9bf53eca80bbe714f2b059570d9597b8",
+      "match": true
+    }
+  ]
+}

@@ -1,30 +1,49 @@
 ---
 title: "Figure 5"
 author: "Siyuan Huang"
-date: "2026-08-23"
+date: "2026-09-30"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+## Current authoring revision
+
+PDF export uses native macOS Quartz to retain fractional Helvetica glyph advances. Cairo at this figure size rounded advances, producing uneven letter spacing and compressed word gaps. PNG and SVG remain generated through their existing devices.
+
+Panel A left connects the available-sample means across all five assessments (175 at Stages 1–3, 84 at one month, 33 eligible participants at 14 months). Initial-stage connections are solid; both follow-up connections are dashed, with a lowered “Follow-up” label above the Stage 3 to one-month segment and no vertical divider. Both legends use the moderate spacing adopted for Figure 6. These lines do not represent matched within-person changes. Panel A right compares only the initial three stages for all 175 participants, 84 one-month completers, and 33 eligible both-follow-up completers. The sample legend is ordered top to bottom as both follow-ups (black triangles), one-month completers (gray triangles), and all participants (open circles), and is slightly lowered away from the subtitle. Panel B retains the original one-month data and tests.
+
+All plotted accuracy uses overall 17-item scoring; the primary long-term analysis instead weights the three tasks equally. Original intervals are preserved. The long-term endpoint uses the verified balanced five-wave sample; the added three-stage comparison uses Cousineau–Morey normalization over the three displayed stages. The extension is exploratory and not preregistered.
+
+Run from `data-code/Figures/` after the public long-term pipeline creates its READY binding in `../Study_2_LongTerm_Results/records/`. `FIGURE5_REPO_ROOT` can select a repository root and `FIGURE5_READY_RUN` can select another verified public run. `FIGURE5_OUTPUT_DIR` and `FIGURE5_DATA_OUTPUT_DIR` redirect outputs. Only deposited data and repository code are required. No inferential models are fitted in this notebook.
+
+```{r figure5, message=FALSE, warning=FALSE}
 set.seed(42)
-```
-
-## Load libraries
-
-```{r load-libraries, message=FALSE, warning=FALSE}
-library(tidyverse)
-library(readxl)
-library(lemon)
-library(Rmisc)
-library(patchwork)
-library(cowplot)
-```
-
-## House-style constants
-
-```{r house-style}
-# PNAS final-size artwork: Figure 5 is exported directly at full width.
+# Current Figure 5 authoring revision; no inferential models are fitted here.
+# Existing manuscript style is retained as a documented DataPlot exception:
+# Helvetica 7 pt, original strokes/colours/shapes, and 7 x 3.111111 inch exports.
+repo_root <- normalizePath(Sys.getenv("FIGURE5_REPO_ROOT", ".."), mustWork = TRUE)
+package_root <- file.path(repo_root, "Study_2_LongTerm_Results")
+code_dir <- file.path(package_root, "code")
+ready_run <- normalizePath(Sys.getenv("FIGURE5_READY_RUN", package_root), mustWork = TRUE)
+suppressPackageStartupMessages({library(jsonlite); library(openssl); library(yaml)})
+cfg <- fromJSON(file.path(ready_run, "records", "run_config.json"))
+source(file.path(code_dir, "eligibility.R")); source(file.path(code_dir, "guard.R"))
+entry_guard(ready_run, cfg, code_dir, file.path(package_root, "analysis_contract.yaml"))
+# Immutable deposited inputs are pinned; regenerated outputs are checked by value below.
+pins <- jsonlite::fromJSON(file.path(repo_root, "Figures", "publicfigure_input_manifest.json"))$file_sha256
+consumed <- c("Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx", "Figures/plot_util_test.R")
+sha <- function(p) paste(unclass(openssl::sha256(file(p))), collapse = "")
+stopifnot(all(vapply(consumed, function(k) !is.null(pins[[k]]) && file.exists(file.path(repo_root, k)) &&
+                      identical(sha(file.path(repo_root, k)), pins[[k]]), TRUE)))
+fig_out <- Sys.getenv("FIGURE5_OUTPUT_DIR", file.path(repo_root, "Figures/figure"))
+data_out <- Sys.getenv("FIGURE5_DATA_OUTPUT_DIR", file.path(repo_root, "Figures/data"))
+dir.create(fig_out, recursive=TRUE, showWarnings=FALSE); dir.create(data_out, recursive=TRUE, showWarnings=FALSE)
+cp <- file.path(cfg$private_inputs,"cohort.csv")
+S <- derive_samples(read.csv(cp, check.names=FALSE, na.strings=c("", "NA")), read_ids_chr(cp))
+cat("Public READY binding and immutable Figure 5 inputs verified.\n")
+suppressPackageStartupMessages({
+  library(tidyverse); library(readxl); library(lemon); library(Rmisc); library(patchwork); library(cowplot)
+})
+fig_src <- file.path(repo_root, "Figures")
 FONT_FAMILY    <- "Helvetica"
 FONT_SIZE_PT   <- 7
 FONT_SIZE_GEOM <- FONT_SIZE_PT / .pt
@@ -44,30 +63,13 @@ POINT_STROKE   <- 0.53
 INTERVAL_HIGHLIGHT_FILL <- "#EBEBEB"
 FIGURE_WIDTH_IN  <- 7
 FIGURE_HEIGHT_IN <- 3.111111
-
 ACCURACY_LIMITS <- c(0, 100)
 ACCURACY_BREAKS <- seq(0, 100, 20)
 SUMMARY_ACCURACY_LIMITS <- c(40, 100)
 SUMMARY_ACCURACY_BREAKS <- seq(40, 100, 20)
-
-GROUP_COLORS <- c(
-  "AI" = "#0173B2",
-  "AI Human" = "#029E73",
-  "Human" = "#DE8F05"
-)
-
-GROUP_LABELS <- c(
-  "AI" = "AI",
-  "AI Human" = "AI + Human",
-  "Human" = "Human"
-)
-
-GROUP_SHAPES <- c(
-  "AI" = 21,
-  "AI Human" = 22,
-  "Human" = 24
-)
-
+GROUP_COLORS <- c("AI" = "#0173B2", "AI Human" = "#029E73", "Human" = "#DE8F05")
+GROUP_LABELS <- c("AI" = "AI", "AI Human" = "AI + Human", "Human" = "Human")
+GROUP_SHAPES <- c("AI" = 21, "AI Human" = 22, "Human" = 24)
 theme_figure5 <- function() {
   theme_classic(base_family = FONT_FAMILY, base_size = FONT_SIZE_PT) +
     theme(
@@ -78,14 +80,8 @@ theme_figure5 <- function() {
       axis.text = element_text(colour = "black", size = FONT_SIZE_PT),
       axis.text.x = element_text(margin = margin(t = 3)),
       axis.title = element_text(colour = "black", size = FONT_SIZE_PT),
-      plot.title = element_text(
-        face = "bold", hjust = 0.5, size = FONT_SIZE_PT,
-        margin = margin(t = 7, b = 1)
-      ),
-      plot.subtitle = element_text(
-        hjust = 0.5, size = FONT_SIZE_PT,
-        margin = margin(b = 3)
-      ),
+      plot.title = element_text(face = "bold", hjust = 0.5, size = FONT_SIZE_PT, margin = margin(t = 7, b = 1)),
+      plot.subtitle = element_text(hjust = 0.5, size = FONT_SIZE_PT, margin = margin(b = 3)),
       legend.title = element_text(size = FONT_SIZE_PT),
       legend.text = element_text(size = FONT_SIZE_PT),
       legend.key = element_blank(),
@@ -100,572 +96,259 @@ theme_figure5 <- function() {
       plot.margin = margin(4, 4, 4, 4)
     )
 }
-```
 
-## Load utilities and data
-
-```{r load-utilities-and-data, message=FALSE, warning=FALSE}
-source("plot_util_test.R")
-
-data_raw <- read_excel(
-  "../Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx"
-)
+source(file.path(fig_src, "plot_util_test.R"))
+data_raw <- read_excel(file.path(repo_root, "Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx"))
 data_filtered <- data_raw[data_raw$stage1_task0_accuracy < 0.9, ]
-```
+# Align the earlier deposited pseudonyms with the public long-term cohort keys.
+# The ordering is preserved; no private crosswalk is needed or exported.
+stopifnot(nrow(data_filtered) == 175L, !anyDuplicated(data_filtered$ID), !anyNA(data_filtered$ID))
+data_filtered$ID <- 1000L + match(data_filtered$ID, sort(data_filtered$ID))
 
-## Panel a: Task accuracy across phases
+# Eligible primary 33 from the guard-verified deposited cohort (eligibility.R); fail before plotting on drift.
+longterm_data <- read.csv(file.path(cfg$private_inputs, "cohort.csv"), check.names = FALSE, na.strings = c("", "NA"))
+stopifnot(nrow(longterm_data) == 175L, !anyDuplicated(longterm_data$ID))
+primary33 <- longterm_data[S$primary33, ]
+phase_columns <- c("stage1_task0_accuracy", "stage2_task0_accuracy", "stage3_task0_accuracy", "follow_task0_accuracy", "follow2_task0_accuracy")
+stopifnot(nrow(primary33) == 33L, all(complete.cases(primary33[phase_columns])), all(primary33$follow2_tool_use == "no"),
+          all(as.integer(table(factor(primary33$Label, levels = names(GROUP_COLORS)))) == c(16, 10, 7)))
+# Earlier measurements of the deposited cohort equal the deposited workbook (no IDs logged).
+match_old <- match(longterm_data$ID, data_filtered$ID)
+stopifnot(!anyNA(match_old), identical(as.character(longterm_data$Label), as.character(data_filtered$Label[match_old])))
+for (column in phase_columns[1:4]) stopifnot(isTRUE(all.equal(longterm_data[[column]], data_filtered[[column]][match_old], tolerance = 1e-12, check.attributes = FALSE)))
+make_primary_summary <- function(by_label) {
+  columns <- if (by_label) c("Label", phase_columns) else phase_columns
+  names <- if (by_label) c("Label", "Stage1", "Stage2", "Stage3", "Follow", "LongTerm") else c("Stage1", "Stage2", "Stage3", "Follow", "LongTerm")
+  data_preprocessing(primary33, label_col = columns, new_columns_name = names,
+    data_columns = c("Stage1", "Stage2", "Stage3", "Follow", "LongTerm"),
+    one_names_values = "Phase", one_values_values = "Accuracy",
+    after_columns_name = c("Stage 1", "Stage 2", "Stage 3", "1 month", "14 months"),
+    phase_subtitle_name = rep("", 5), phase_short_name = c("Stage 1", "Stage 2", "Stage 3", "1 month", "14 months"),
+    groupby_col = if (by_label) "Label" else NULL)$stats_summary %>%
+    mutate(x_plot = as.numeric(Phase_short), mean_pct = mean * 100, ci_pct = ci95 * 100)
+}
+primary_summary_by_label <- make_primary_summary(TRUE)
+primary_summary_all <- make_primary_summary(FALSE)
+stopifnot(all(primary_summary_all$n == 33L), all(primary_summary_by_label$n %in% c(16, 10, 7)))
 
-```{r panel-a-data, message=FALSE, warning=FALSE}
-data_filtered1 <- data_filtered[, c(
-  "Label",
-  "stage1_task0_accuracy",
-  "stage2_task0_accuracy",
-  "stage3_task0_accuracy",
-  "follow_task0_accuracy"
-)]
-
+# ---- Panel A left: original label summaries (unchanged) ------------------------------------------------------
+data_filtered1 <- data_filtered[, c("Label", "stage1_task0_accuracy", "stage2_task0_accuracy", "stage3_task0_accuracy", "follow_task0_accuracy")]
 data_filtered2 <- data_filtered1[!is.na(data_filtered1$follow_task0_accuracy), ]
-
 df_11 <- data_preprocessing(
   data = data_filtered1,
-  label_col = c(
-    "Label",
-    "stage1_task0_accuracy",
-    "stage2_task0_accuracy",
-    "stage3_task0_accuracy",
-    "follow_task0_accuracy"
-  ),
+  label_col = c("Label", "stage1_task0_accuracy", "stage2_task0_accuracy", "stage3_task0_accuracy", "follow_task0_accuracy"),
   new_columns_name = c("Label", "Stage1", "Stage2", "Stage3", "Follow"),
   data_columns = c("Stage1", "Stage2", "Stage3", "Follow"),
-  one_names_values = "Phase",
-  one_values_values = "Accuracy",
-  after_columns_name = c(
-    "Stage 1: Independent work",
-    "Stage 2: LLM-guided practice",
-    "Stage 3: LLM-provided answers",
-    "Follow-up"
-  ),
-  phase_subtitle_name = c(
-    "Independent \n work",
-    "LLM-guided \n practice",
-    "LLM-provided \n answers",
-    ""
-  ),
+  one_names_values = "Phase", one_values_values = "Accuracy",
+  after_columns_name = c("Stage 1: Independent work", "Stage 2: LLM-guided practice", "Stage 3: LLM-provided answers", "Follow-up"),
+  phase_subtitle_name = c("Independent \n work", "LLM-guided \n practice", "LLM-provided \n answers", ""),
   phase_short_name = c("Stage 1", "Stage 2", "Stage 3", "Follow-up"),
   groupby_col = "Label"
 )
-
 df_11_plot <- df_11$stats_summary %>%
   mutate(
-    Phase_short = factor(
-      Phase_short,
-      levels = c("Stage 1", "Stage 2", "Stage 3", "Follow-up")
-    ),
+    Phase_short = factor(Phase_short, levels = c("Stage 1", "Stage 2", "Stage 3", "Follow-up")),
     Label = factor(Label, levels = c("AI", "AI Human", "Human")),
-    x_plot = as.numeric(Phase_short),
-    mean_pct = mean * 100,
-    ci_pct = ci95 * 100
+    x_plot = as.numeric(Phase_short), mean_pct = mean * 100, ci_pct = ci95 * 100
   )
-```
-
-```{r panel-a-plot, message=FALSE, warning=FALSE}
+longterm_endpoint <- primary_summary_by_label %>% filter(x_plot == 5)
 fig11 <- ggplot(df_11_plot, aes(x = x_plot, y = mean_pct)) +
-  annotate(
-    "rect",
-    xmin = 1,
-    xmax = 2,
-    ymin = -Inf,
-    ymax = Inf,
-    fill = INTERVAL_HIGHLIGHT_FILL,
-    colour = NA
-  ) +
-  geom_hline(
-    yintercept = 50,
-    linetype = "dashed",
-    colour = "grey55",
-    linewidth = LINE_SIZE
-  ) +
-  geom_vline(
-    xintercept = 3.5,
-    colour = "grey55",
-    linewidth = LINE_SIZE
-  ) +
-  geom_linerange(
-    aes(
-      ymin = mean_pct - ci_pct,
-      ymax = mean_pct + ci_pct,
-      colour = Label
-    ),
-    linewidth = ERROR_LINE_SIZE,
-    show.legend = FALSE
-  ) +
-  geom_line(
-    aes(group = Label, colour = Label),
-    linewidth = DATA_LINE_SIZE,
-    show.legend = FALSE
-  ) +
-  geom_point(
-    aes(fill = Label, colour = Label, shape = Label),
-    size = POINT_SIZE,
-    stroke = POINT_STROKE
-  ) +
-  annotate(
-    "text",
-    x = 3.58,
-    y = 52,
-    label = "Chance",
-    hjust = 0,
-    vjust = 0,
-    family = FONT_FAMILY,
-    size = FONT_SIZE_GEOM
-  ) +
-  annotate(
-    "text",
-    x = 3.58,
-    y = 96,
-    label = "1-month\ndelay",
-    hjust = 0,
-    vjust = 1,
-    family = FONT_FAMILY,
-    size = FONT_SIZE_GEOM
-  ) +
-  scale_colour_manual(
-    values = GROUP_COLORS,
-    labels = GROUP_LABELS,
-    name = "Label"
-  ) +
-  scale_fill_manual(
-    values = GROUP_COLORS,
-    labels = GROUP_LABELS,
-    name = "Label"
-  ) +
-  scale_shape_manual(
-    values = GROUP_SHAPES,
-    labels = GROUP_LABELS,
-    name = "Label"
-  ) +
-  scale_x_continuous(
-    limits = c(0.85, 4.25),
-    breaks = 1:4,
-    labels = c(
-      "Stage 1",
-      "Stage 2",
-      "Stage 3",
-      "Follow-up\n "
-    ),
-    expand = expansion(mult = 0)
-  ) +
-  scale_y_continuous(
-    limits = SUMMARY_ACCURACY_LIMITS,
-    breaks = SUMMARY_ACCURACY_BREAKS,
-    labels = scales::label_number(accuracy = 1),
-    expand = expansion(mult = 0)
-  ) +
+  # Dashed connections distinguish both follow-up assessments from the initial session.
+  geom_line(data = bind_rows(df_11_plot %>% filter(x_plot >= 3), longterm_endpoint),
+            aes(group = Label, colour = Label), linetype = "dashed", linewidth = DATA_LINE_SIZE, show.legend = FALSE) +
+  geom_linerange(data = longterm_endpoint, aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct, colour = Label),
+                 linewidth = ERROR_LINE_SIZE, show.legend = FALSE) +
+  geom_point(data = longterm_endpoint, aes(fill = Label, colour = Label, shape = Label),
+             size = POINT_SIZE, stroke = POINT_STROKE, show.legend = FALSE) +
+  annotate("rect", xmin = 1, xmax = 2, ymin = -Inf, ymax = Inf, fill = INTERVAL_HIGHLIGHT_FILL, colour = NA) +
+  geom_hline(yintercept = 50, linetype = "dashed", colour = "grey55", linewidth = LINE_SIZE) +
+  geom_linerange(aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct, colour = Label), linewidth = ERROR_LINE_SIZE, show.legend = FALSE) +
+  geom_line(data = df_11_plot %>% filter(x_plot <= 3), aes(group = Label, colour = Label),
+            linetype = "solid", linewidth = DATA_LINE_SIZE, show.legend = FALSE) +
+  geom_point(aes(fill = Label, colour = Label, shape = Label), size = POINT_SIZE, stroke = POINT_STROKE) +
+  annotate("text", x = 3.58, y = 52, label = "Chance", hjust = 0, vjust = 0, family = FONT_FAMILY, size = FONT_SIZE_GEOM) +
+  annotate("text", x = 3.7, y = 86, label = "Follow-up", hjust = 0.5, vjust = 0.5, family = FONT_FAMILY, size = FONT_SIZE_GEOM) +
+  scale_colour_manual(values = GROUP_COLORS, labels = GROUP_LABELS, name = "Label") +
+  scale_fill_manual(values = GROUP_COLORS, labels = GROUP_LABELS, name = "Label") +
+  scale_shape_manual(values = GROUP_SHAPES, labels = GROUP_LABELS, name = "Label") +
+  scale_x_continuous(limits = c(0.85, 5.25), breaks = 1:5, labels = c("Stage 1", "Stage 2", "Stage 3", "1 month\n ", "14 months\n "),
+                     expand = expansion(mult = 0)) +
+  scale_y_continuous(limits = SUMMARY_ACCURACY_LIMITS, breaks = SUMMARY_ACCURACY_BREAKS, labels = scales::label_number(accuracy = 1),
+                     expand = expansion(mult = 0)) +
   coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
-  labs(
-    tag = "A",
-    title = "Accuracy across phases",
-    subtitle = NULL,
-    x = NULL,
-    y = "Accuracy (%)"
-  ) +
+  labs(tag = "A", title = "Accuracy across phases", subtitle = NULL, x = NULL, y = "Accuracy (%)") +
   theme_figure5() +
-  theme(
-    legend.position = "inside",
-    legend.position.inside = c(0.05, 0.98),
-    legend.justification = c("left", "top"),
-    plot.margin = margin(4, 8, 4, 4),
-    plot.tag.position = c(0.02, 0.955)
-  ) +
-  guides(
-    colour = guide_legend(
-      title = "Label",
-      title.position = "top",
-      title.hjust = 0,
-      override.aes = list(
-        linewidth = 0,
-        linetype = 0,
-        fill = unname(GROUP_COLORS),
-        colour = unname(GROUP_COLORS),
-        shape = unname(GROUP_SHAPES),
-        size = POINT_SIZE,
-        stroke = POINT_STROKE
-      )
-    ),
-    fill = "none",
-    shape = "none"
-  )
-```
+  theme(legend.position = "inside", legend.position.inside = c(0.05, 0.98), legend.justification = c("left", "top"),
+        legend.key.height = grid::unit(8, "pt"), legend.key.spacing.y = grid::unit(1, "pt"),
+        plot.margin = margin(4, 8, 4, 4), plot.tag.position = c(0.02, 0.955)) +
+  guides(colour = guide_legend(title = "Label", title.position = "top", title.hjust = 0,
+                               override.aes = list(linewidth = 0, linetype = 0, fill = unname(GROUP_COLORS), colour = unname(GROUP_COLORS),
+                                                   shape = unname(GROUP_SHAPES), size = POINT_SIZE, stroke = POINT_STROKE)),
+         fill = "none", shape = "none")
 
-## Panel b: Attrition sensitivity test
-
-```{r panel-b-data, message=FALSE, warning=FALSE}
-df_12_1 <- data_preprocessing(
-  data = data_filtered2,
-  label_col = c(
-    "stage1_task0_accuracy",
-    "stage2_task0_accuracy",
-    "stage3_task0_accuracy"
-  ),
-  new_columns_name = c("Stage1", "Stage2", "Stage3"),
-  data_columns = c("Stage1", "Stage2", "Stage3"),
-  one_names_values = "Phase",
-  one_values_values = "Accuracy",
-  after_columns_name = c(
-    "Stage 1: Independent work",
-    "Stage 2: LLM-guided practice",
-    "Stage 3: LLM-provided answers"
-  ),
-  phase_subtitle_name = c(
-    "Independent \n work",
-    "LLM-guided \n practice",
-    "LLM-provided \n answers"
-  ),
-  phase_short_name = c("Stage 1", "Stage 2", "Stage 3"),
-  groupby_col = NULL
-)
-
-df_12_2 <- data_preprocessing(
-  data = data_filtered,
-  label_col = c(
-    "stage1_task0_accuracy",
-    "stage2_task0_accuracy",
-    "stage3_task0_accuracy"
-  ),
-  new_columns_name = c("Stage1", "Stage2", "Stage3"),
-  data_columns = c("Stage1", "Stage2", "Stage3"),
-  one_names_values = "Phase",
-  one_values_values = "Accuracy",
-  after_columns_name = c(
-    "Stage 1: Independent work",
-    "Stage 2: LLM-guided practice",
-    "Stage 3: LLM-provided answers"
-  ),
-  phase_subtitle_name = c(
-    "Independent \n work",
-    "LLM-guided \n practice",
-    "LLM-provided \n answers"
-  ),
-  phase_short_name = c("Stage 1", "Stage 2", "Stage 3"),
-  groupby_col = NULL
-)
-
-df_12_1_plot <- df_12_1$stats_summary
-df_12_2_plot <- df_12_2$stats_summary
+# ---- Panel A right: attrition sensitivity (original two series unchanged) + matched 33 --------------------------
+prep3 <- function(dat) data_preprocessing(
+  data = dat, label_col = c("stage1_task0_accuracy", "stage2_task0_accuracy", "stage3_task0_accuracy"),
+  new_columns_name = c("Stage1", "Stage2", "Stage3"), data_columns = c("Stage1", "Stage2", "Stage3"),
+  one_names_values = "Phase", one_values_values = "Accuracy",
+  after_columns_name = c("Stage 1: Independent work", "Stage 2: LLM-guided practice", "Stage 3: LLM-provided answers"),
+  phase_subtitle_name = c("Independent \n work", "LLM-guided \n practice", "LLM-provided \n answers"),
+  phase_short_name = c("Stage 1", "Stage 2", "Stage 3"), groupby_col = NULL)
+df_12_1_plot <- prep3(data_filtered2)$stats_summary
+df_12_2_plot <- prep3(data_filtered)$stats_summary
 df_12_1_plot$Label <- "Follow-up completers"
 df_12_2_plot$Label <- "All participants"
-
 df_combined <- bind_rows(df_12_1_plot, df_12_2_plot) %>%
-  mutate(
-    Phase_short = factor(
-      Phase_short,
-      levels = c("Stage 1", "Stage 2", "Stage 3")
-    ),
-    Label = factor(
-      Label,
-      levels = c("Follow-up completers", "All participants")
-    ),
-    x_plot = as.numeric(Phase_short),
-    mean_pct = mean * 100,
-    ci_pct = ci95 * 100
-  ) %>%
+  mutate(Phase_short = factor(Phase_short, levels = c("Stage 1", "Stage 2", "Stage 3")),
+         Label = factor(Label, levels = c("Follow-up completers", "All participants")),
+         x_plot = as.numeric(Phase_short), mean_pct = mean * 100, ci_pct = ci95 * 100) %>%
   filter(!is.na(x_plot))
-```
-
-```{r panel-b-plot, message=FALSE, warning=FALSE}
-attrition_labels <- c(
-  "Follow-up completers<br>(<i>n</i> = 84)",
-  "All participants<br>(<i>n</i> = 175)"
-)
-
+original_attrition_summaries <- df_combined
+# Normalize the added sample over the three displayed stages, like the two original series.
+primary_three_stage <- prep3(primary33)$stats_summary %>%
+  mutate(x_plot = as.numeric(Phase_short), mean_pct = mean * 100, ci_pct = ci95 * 100)
+stopifnot(nrow(primary_three_stage) == 3L, all(primary_three_stage$n == 33L),
+          all(abs(primary_three_stage$mean - primary_summary_all$mean[1:3]) < 1e-12))
+new_attrition <- primary_three_stage %>% mutate(Label = "Both follow-ups")
+df_combined <- bind_rows(df_combined, new_attrition) %>%
+  mutate(Label = factor(Label, levels = c("Both follow-ups", "Follow-up completers", "All participants")))
+attrition_labels <- c("Both follow-ups" = "Both follow-ups (<i>n</i> = 33)",
+                      "Follow-up completers" = "1-month completers (<i>n</i> = 84)",
+                      "All participants" = "All participants (<i>n</i> = 175)")
 fig12 <- ggplot(df_combined, aes(x = x_plot, y = mean_pct)) +
-  geom_hline(
-    yintercept = 50,
-    linetype = "dashed",
-    colour = "grey55",
-    linewidth = LINE_SIZE
-  ) +
-  geom_linerange(
-    aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct),
-    colour = "black",
-    linewidth = ERROR_LINE_SIZE
-  ) +
-  geom_line(
-    aes(group = Label, linetype = Label),
-    colour = "black",
-    linewidth = DATA_LINE_SIZE
-  ) +
-  geom_point(
-    aes(shape = Label, fill = Label),
-    colour = "black",
-    size = POINT_SIZE,
-    stroke = POINT_STROKE
-  ) +
-  scale_shape_manual(
-    values = c("All participants" = 21, "Follow-up completers" = 21),
-    labels = attrition_labels,
-    name = NULL
-  ) +
-  scale_fill_manual(
-    values = c("All participants" = "black", "Follow-up completers" = "white"),
-    labels = attrition_labels,
-    name = NULL
-  ) +
-  scale_linetype_manual(
-    values = c("All participants" = "solid", "Follow-up completers" = "dashed"),
-    labels = attrition_labels,
-    name = NULL
-  ) +
-  scale_x_continuous(
-    limits = c(0.85, 3.15),
-    breaks = 1:3,
-    labels = c("Stage 1", "Stage 2", "Stage 3"),
-    expand = expansion(mult = 0)
-  ) +
-  scale_y_continuous(
-    limits = SUMMARY_ACCURACY_LIMITS,
-    breaks = SUMMARY_ACCURACY_BREAKS,
-    labels = scales::label_number(accuracy = 1),
-    expand = expansion(mult = 0)
-  ) +
+  geom_hline(yintercept = 50, linetype = "dashed", colour = "grey55", linewidth = LINE_SIZE) +
+  geom_linerange(aes(ymin = mean_pct - ci_pct, ymax = mean_pct + ci_pct), colour = "black", linewidth = ERROR_LINE_SIZE) +
+  geom_line(aes(group = Label, linetype = Label), colour = "black", linewidth = DATA_LINE_SIZE) +
+  geom_point(aes(shape = Label, fill = Label), colour = "black", size = POINT_SIZE, stroke = POINT_STROKE) +
+  scale_shape_manual(values = c("All participants" = 21, "Follow-up completers" = 24, "Both follow-ups" = 24), labels = attrition_labels, name = NULL) +
+  scale_fill_manual(values = c("All participants" = "white", "Follow-up completers" = "grey65", "Both follow-ups" = "black"), labels = attrition_labels, name = NULL) +
+  scale_linetype_manual(values = c("All participants" = "solid", "Follow-up completers" = "dashed", "Both follow-ups" = "dotdash"), labels = attrition_labels, name = NULL) +
+  scale_x_continuous(limits = c(0.85, 3.15), breaks = 1:3, labels = c("Stage 1", "Stage 2", "Stage 3"),
+                     expand = expansion(mult = 0)) +
+  scale_y_continuous(limits = SUMMARY_ACCURACY_LIMITS, breaks = SUMMARY_ACCURACY_BREAKS, labels = scales::label_number(accuracy = 1),
+                     expand = expansion(mult = 0)) +
   coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
-  labs(
-    tag = NULL,
-    title = "Attrition sensitivity test",
-    subtitle = "Collapsed across labels",
-    x = NULL,
-    y = NULL
-  ) +
+  labs(tag = NULL, title = "Follow-up sample comparison", subtitle = "Collapsed across labels", x = NULL, y = NULL) +
   theme_figure5() +
-  theme(
-    legend.position = "inside",
-    legend.position.inside = c(0.05, 0.98),
-    legend.justification = c("left", "top"),
-    legend.text = ggtext::element_markdown(hjust = 0, lineheight = 0.95),
-    legend.key.height = grid::unit(13, "pt"),
-    legend.key.spacing.y = grid::unit(4, "pt"),
-    plot.margin = margin(4, 10, 4, 2),
-    plot.tag.position = c(0.03, 0.955)
-  ) +
-  guides(
-    fill = guide_legend(
-      nrow = 2,
-      byrow = TRUE,
-      override.aes = list(
-        shape = 21,
-        size = POINT_SIZE,
-        stroke = POINT_STROKE
-      )
-    ),
-    shape = "none",
-    linetype = "none"
-  )
-```
+  theme(legend.position = "inside", legend.position.inside = c(0.03, 1.025), legend.justification = c("left", "top"),
+        legend.text = ggtext::element_markdown(hjust = 0, lineheight = 1), legend.key.height = grid::unit(8.5, "pt"),
+        legend.key.spacing.y = grid::unit(1.5, "pt"), plot.margin = margin(4, 10, 4, 2), plot.tag.position = c(0.03, 0.955)) +
+  guides(fill = guide_legend(nrow = 3, byrow = TRUE, override.aes = list(shape = c(24, 24, 21), size = POINT_SIZE, stroke = POINT_STROKE)),
+         shape = "none", linetype = "none")
 
-## Panel c: Early- versus late-corrected items
-
-```{r panel-c-data, message=FALSE, warning=FALSE}
-df_correction <- read_csv("data/Correction_Data.csv", show_col_types = FALSE)
-correction_contrasts <- read_csv(
-  "data/Correction_Timing_Contrasts.csv",
-  show_col_types = FALSE
-)
-
+# ---- Panel B: early- versus late-corrected items (unchanged; one-month data) ------------------------------------
+df_correction <- read_csv(file.path(fig_src, "data/Correction_Data.csv"), show_col_types = FALSE)
+correction_contrasts <- read_csv(file.path(fig_src, "data/Correction_Timing_Contrasts.csv"), show_col_types = FALSE)
+# These CSVs are regenerated by Comparison.Rmd; validate their schema and numerical relationships.
+stopifnot(all(c("ID", "Label", "Group", "Measure", "Measure_Raw") %in% names(df_correction)),
+          !anyDuplicated(df_correction[c("ID", "Label", "Group")]),
+          setequal(unique(df_correction$Label), c("AI", "AI + Human", "Human")),
+          setequal(unique(df_correction$Group), c("Early-corrected", "Late-corrected")),
+          all(is.finite(df_correction$Measure_Raw)), all(df_correction$Measure_Raw >= 0 & df_correction$Measure_Raw <= 1),
+          isTRUE(all.equal(df_correction$Measure, 100 * df_correction$Measure_Raw, tolerance = 1e-12)),
+          nrow(correction_contrasts) == 3L,
+          all(c("contrast", "Label", "odds.ratio", "SE", "z.ratio", "p.value") %in% names(correction_contrasts)),
+          setequal(correction_contrasts$Label, c("AI", "AI + Human", "Human")),
+          all(correction_contrasts$contrast == "Early / Late"),
+          all(is.finite(correction_contrasts$odds.ratio)), all(correction_contrasts$odds.ratio > 0),
+          all(is.finite(correction_contrasts$SE)), all(correction_contrasts$SE > 0),
+          all(is.finite(correction_contrasts$p.value)), all(correction_contrasts$p.value >= 0 & correction_contrasts$p.value <= 1),
+          isTRUE(all.equal(correction_contrasts$p.value, 2 * pnorm(-abs(correction_contrasts$z.ratio)), tolerance = 1e-10)))
 p_values <- correction_contrasts %>%
-  transmute(
-    Label,
-    label_text = if_else(
-      p.value < 0.001,
-      "italic(P)~'< 0.001'",
-      paste0("italic(P)~'= ", sprintf("%.3f", p.value), "'")
-    )
-  )
-
-morey_sum <- summarySEwithin(
-  data = df_correction,
-  measurevar = "Measure",
-  withinvars = "Group",
-  betweenvars = "Label",
-  idvar = "ID",
-  na.rm = TRUE,
-  conf.interval = 0.95
-)
-```
-
-```{r panel-c-plot, message=FALSE, warning=FALSE}
+  transmute(Label, label_text = if_else(p.value < 0.001, "italic(P)~'< 0.001'", paste0("italic(P)~'= ", sprintf("%.3f", p.value), "'")))
+morey_sum <- summarySEwithin(data = df_correction, measurevar = "Measure", withinvars = "Group", betweenvars = "Label",
+                             idvar = "ID", na.rm = TRUE, conf.interval = 0.95)
 fig13 <- ggplot(df_correction, aes(x = Group, y = Measure)) +
-  geom_hline(
-    yintercept = 50,
-    linetype = "dashed",
-    colour = "grey55",
-    linewidth = LINE_SIZE
-  ) +
-  geom_line(
-    aes(group = ID),
-    colour = "grey82",
-    alpha = 0.65,
-    linewidth = LINE_SIZE
-  ) +
-  geom_line(
-    data = morey_sum,
-    aes(x = Group, y = Measure, group = 1, colour = Label),
-    linewidth = DATA_LINE_SIZE,
-    inherit.aes = FALSE
-  ) +
-  geom_linerange(
-    data = morey_sum,
-    aes(
-      x = Group,
-      y = Measure,
-      ymin = Measure - ci,
-      ymax = Measure + ci,
-      colour = Label
-    ),
-    linewidth = ERROR_LINE_SIZE,
-    inherit.aes = FALSE
-  ) +
-  geom_point(
-    data = morey_sum,
-    aes(x = Group, y = Measure, colour = Label, fill = Label, shape = Label),
-    size = POINT_SIZE,
-    stroke = POINT_STROKE,
-    inherit.aes = FALSE
-  ) +
-  geom_text(
-    data = p_values,
-    aes(x = 1.5, y = 96, label = label_text),
-    family = FONT_FAMILY,
-    size = FONT_SIZE_GEOM,
-    parse = TRUE,
-    colour = "black",
-    inherit.aes = FALSE
-  ) +
+  geom_hline(yintercept = 50, linetype = "dashed", colour = "grey55", linewidth = LINE_SIZE) +
+  geom_line(aes(group = ID), colour = "grey82", alpha = 0.65, linewidth = LINE_SIZE) +
+  geom_line(data = morey_sum, aes(x = Group, y = Measure, group = 1, colour = Label), linewidth = DATA_LINE_SIZE, inherit.aes = FALSE) +
+  geom_linerange(data = morey_sum, aes(x = Group, y = Measure, ymin = Measure - ci, ymax = Measure + ci, colour = Label),
+                 linewidth = ERROR_LINE_SIZE, inherit.aes = FALSE) +
+  geom_point(data = morey_sum, aes(x = Group, y = Measure, colour = Label, fill = Label, shape = Label),
+             size = POINT_SIZE, stroke = POINT_STROKE, inherit.aes = FALSE) +
+  geom_text(data = p_values, aes(x = 1.5, y = 96, label = label_text), family = FONT_FAMILY, size = FONT_SIZE_GEOM, parse = TRUE,
+            colour = "black", inherit.aes = FALSE) +
   facet_wrap(~Label, nrow = 1) +
-  scale_colour_manual(values = c(
-    "AI" = GROUP_COLORS[["AI"]],
-    "AI + Human" = GROUP_COLORS[["AI Human"]],
-    "Human" = GROUP_COLORS[["Human"]]
-  )) +
-  scale_fill_manual(values = c(
-    "AI" = GROUP_COLORS[["AI"]],
-    "AI + Human" = GROUP_COLORS[["AI Human"]],
-    "Human" = GROUP_COLORS[["Human"]]
-  )) +
-  scale_shape_manual(values = c(
-    "AI" = 21,
-    "AI + Human" = 22,
-    "Human" = 24
-  )) +
-  scale_x_discrete(
-    labels = c("Early-corrected" = "Early", "Late-corrected" = "Late"),
-    expand = expansion(add = 0.22)
-  ) +
-  scale_y_continuous(
-    limits = ACCURACY_LIMITS,
-    breaks = ACCURACY_BREAKS,
-    labels = scales::label_number(accuracy = 1),
-    expand = expansion(mult = 0)
-  ) +
+  scale_colour_manual(values = c("AI" = GROUP_COLORS[["AI"]], "AI + Human" = GROUP_COLORS[["AI Human"]], "Human" = GROUP_COLORS[["Human"]])) +
+  scale_fill_manual(values = c("AI" = GROUP_COLORS[["AI"]], "AI + Human" = GROUP_COLORS[["AI Human"]], "Human" = GROUP_COLORS[["Human"]])) +
+  scale_shape_manual(values = c("AI" = 21, "AI + Human" = 22, "Human" = 24)) +
+  scale_x_discrete(labels = c("Early-corrected" = "Early", "Late-corrected" = "Late"), expand = expansion(add = 0.22)) +
+  scale_y_continuous(limits = ACCURACY_LIMITS, breaks = ACCURACY_BREAKS, labels = scales::label_number(accuracy = 1), expand = expansion(mult = 0)) +
   coord_capped_cart(bottom = "both", left = "both", gap = 0.01) +
-  labs(
-    tag = "B",
-    title = "Follow-up accuracy for early- (Stage 2)",
-    subtitle = "versus late-corrected (Stage 3) items",
-    x = NULL,
-    y = NULL
-  ) +
+  labs(tag = "B", title = "One-month accuracy for early- (Stage 2)", subtitle = "versus late-corrected (Stage 3) items", x = NULL, y = NULL) +
   theme_figure5() +
-  theme(
-    legend.position = "none",
-    panel.spacing = grid::unit(4, "pt"),
-    plot.subtitle = element_text(face = "bold"),
-    plot.tag.position = c(0.02, 0.955)
-  )
-```
+  theme(legend.position = "none", panel.spacing = grid::unit(4, "pt"), plot.subtitle = element_text(face = "bold"),
+        plot.tag.position = c(0.02, 0.955))
 
-## Combine and export
-
-```{r combine-and-export, message=FALSE, warning=FALSE}
-combined_core <- fig11 + fig12 + fig13 +
-  plot_layout(nrow = 1, widths = c(0.42, 0.28, 0.45)) &
-  theme(
-    plot.tag = element_text(size = TAG_SIZE_PT, face = "bold")
-  )
-
+# ---- Combine and export -------------------------------------------------------------------------------------
+combined_core <- fig11 + fig12 + fig13 + plot_layout(nrow = 1, widths = c(0.42, 0.28, 0.45)) &
+  theme(plot.tag = element_text(size = TAG_SIZE_PT, face = "bold"))
 BRACKET_COLOR <- "grey55"
 SAMPLE_SIZE_LABEL_Y <- 0.040
 BRACKET_Y <- SAMPLE_SIZE_LABEL_Y
 STAGE_1_X <- 0.0788
-STAGE_3_X <- 0.2521
-FOLLOW_UP_X <- 0.3370
+STAGE_3_X <- 0.2121
+FOLLOW_UP_X <- 0.2780
+LONG_TERM_X <- 0.3439
 STAGE_GROUP_CENTER_X <- (STAGE_1_X + STAGE_3_X) / 2
 BRACKET_TEXT_GAP <- 0.031
-STAGE_GROUP_N_Y <- SAMPLE_SIZE_LABEL_Y
-FOLLOW_UP_N_Y <- SAMPLE_SIZE_LABEL_Y
-
 combined_figure <- ggdraw(combined_core) +
-  draw_line(
-    x = c(STAGE_1_X, STAGE_GROUP_CENTER_X - BRACKET_TEXT_GAP),
-    y = c(BRACKET_Y, BRACKET_Y),
-    colour = BRACKET_COLOR,
-    size = LINE_SIZE
-  ) +
-  draw_line(
-    x = c(STAGE_GROUP_CENTER_X + BRACKET_TEXT_GAP, STAGE_3_X),
-    y = c(BRACKET_Y, BRACKET_Y),
-    colour = BRACKET_COLOR,
-    size = LINE_SIZE
-  ) +
-  draw_label(
-    expression(italic(n) == 175),
-    x = STAGE_GROUP_CENTER_X,
-    y = STAGE_GROUP_N_Y,
-    fontfamily = FONT_FAMILY,
-    size = FONT_SIZE_PT,
-    colour = "black"
-  ) +
-  draw_label(
-    expression(italic(n) == 84),
-    x = FOLLOW_UP_X,
-    y = FOLLOW_UP_N_Y,
-    fontfamily = FONT_FAMILY,
-    size = FONT_SIZE_PT,
-    colour = "black"
-  )
+  draw_line(x = c(STAGE_1_X, STAGE_GROUP_CENTER_X - BRACKET_TEXT_GAP), y = c(BRACKET_Y, BRACKET_Y), colour = BRACKET_COLOR, size = LINE_SIZE) +
+  draw_line(x = c(STAGE_GROUP_CENTER_X + BRACKET_TEXT_GAP, STAGE_3_X), y = c(BRACKET_Y, BRACKET_Y), colour = BRACKET_COLOR, size = LINE_SIZE) +
+  draw_label(expression(italic(n) == 175), x = STAGE_GROUP_CENTER_X, y = SAMPLE_SIZE_LABEL_Y, fontfamily = FONT_FAMILY, size = FONT_SIZE_PT, colour = "black") +
+  draw_label(expression(italic(n) == 84), x = FOLLOW_UP_X, y = SAMPLE_SIZE_LABEL_Y, fontfamily = FONT_FAMILY, size = FONT_SIZE_PT, colour = "black") +
+  draw_label(expression(italic(n) == 33), x = LONG_TERM_X, y = SAMPLE_SIZE_LABEL_Y, fontfamily = FONT_FAMILY, size = FONT_SIZE_PT, colour = "black")
+base <- file.path(fig_out, "Figure_Study2_1")
+ggsave(paste0(base, ".pdf"), combined_figure, width = FIGURE_WIDTH_IN, height = FIGURE_HEIGHT_IN, device = function(filename, width, height, ...) {
+         if (!capabilities("aqua")) stop("Native macOS Quartz is required for this typography-verified PDF export.")
+         grDevices::quartz(type = "pdf", file = filename, width = width, height = height,
+                          family = FONT_FAMILY, bg = "white")
+       }, bg = "white")
+ggsave(paste0(base, ".png"), combined_figure, width = FIGURE_WIDTH_IN, height = FIGURE_HEIGHT_IN, dpi = 300, bg = "white")
+ggsave(paste0(base, ".svg"), combined_figure, width = FIGURE_WIDTH_IN, height = FIGURE_HEIGHT_IN, bg = "white")
 
-combined_figure
+# ---- Plotted aggregates (for traceability and strict rerun comparison) -----------------------------------------
+keep <- function(x, cols) as.data.frame(x)[, cols]
+write.csv(keep(df_11_plot, c("Label", "Phase_short", "n", "mean", "sd_norm", "se_corrected", "ci95")),
+          file.path(data_out, "fig5_original_label_summaries.csv"), row.names = FALSE)
+write.csv(keep(original_attrition_summaries, c("Label", "Phase_short", "n", "mean", "sd_norm", "se_corrected", "ci95")),
+          file.path(data_out, "fig5_original_attrition_summaries.csv"), row.names = FALSE)
+write.csv(keep(primary_summary_by_label, c("Label", "Phase_short", "n", "mean", "sd_norm", "se_corrected", "ci95")),
+          file.path(data_out, "fig5_primary33_by_label.csv"), row.names = FALSE)
+write.csv(keep(primary_summary_all, c("Phase_short", "n", "mean", "sd_norm", "se_corrected", "ci95")),
+          file.path(data_out, "fig5_primary33_matched.csv"), row.names = FALSE)
+write.csv(keep(morey_sum, c("Label", "Group", "N", "Measure", "sd", "se", "ci")), file.path(data_out, "fig5_panel_b_summaries.csv"), row.names = FALSE)
+fig5_checks <- data.frame(
+  figure = "Figure 5 no_tools",
+  check = c("original left positions n (175 x3 stages, 84 one month)", "original right series n (84, 175)", "added 14-month endpoint n by label",
+            "matched trajectory n", "Panel B P values from generated contrasts"),
+  observed = c(paste(sort(unique(df_11_plot$n)), collapse = "/"), paste(sort(unique(original_attrition_summaries$n)), collapse = "/"),
+               paste(longterm_endpoint$n, collapse = "/"), paste(unique(primary_summary_all$n), collapse = "/"), paste(p_values$label_text, collapse = " | ")),
+  pass = c(setequal(df_11_plot$n, c(59, 58, 29, 24, 31)) && all(df_11_plot$n[df_11_plot$Phase_short != "Follow-up"] %in% c(59, 58)),
+           setequal(original_attrition_summaries$n, c(84, 175)), identical(as.numeric(longterm_endpoint$n), c(16, 10, 7)),
+           all(primary_summary_all$n == 33), nrow(p_values) == 3))
 
-ggsave(
-  "figure/Figure_Study2_1.pdf",
-  combined_figure,
-  width = FIGURE_WIDTH_IN,
-  height = FIGURE_HEIGHT_IN,
-  device = cairo_pdf,
-  family = FONT_FAMILY,
-  symbolfamily = FONT_FAMILY,
-  bg = "white"
-)
+write.csv(keep(primary_three_stage,c("Phase_short","n","mean","sd_norm","se_corrected","ci95")), file.path(data_out,"fig5_primary33_three_stage.csv"), row.names=FALSE)
+stopifnot(all(fig5_checks$pass), identical(sort(unique(df_combined$x_plot)), c(1,2,3)))
+write.csv(fig5_checks, file.path(data_out,"fig5_checks.csv"), row.names=FALSE)
+writeLines(capture.output(sessionInfo()), file.path(fig_out,"Figure_Study2_1_sessionInfo.txt"))
 
-ggsave(
-  "figure/Figure_Study2_1.png",
-  combined_figure,
-  width = FIGURE_WIDTH_IN,
-  height = FIGURE_HEIGHT_IN,
-  dpi = 300,
-  bg = "white"
-)
+# Verify the displayed phase ranges and line styles without fitting a model.
+left_build <- ggplot_build(fig11)$data
+followup_lines <- left_build[[1]]
+solid_lines <- left_build[[7]]
+stopifnot(length(unique(followup_lines$group)) == 3L, length(unique(solid_lines$group)) == 3L,
+          all(followup_lines$linetype == "dashed"), all(solid_lines$linetype == "solid"),
+          all(vapply(split(followup_lines$x, followup_lines$group), function(x) identical(sort(x), as.numeric(3:5)), TRUE)),
+          all(vapply(split(solid_lines$x, solid_lines$group), function(x) identical(sort(x), as.numeric(1:3)), TRUE)))
 
-ggsave(
-  "figure/Figure_Study2_1.svg",
-  combined_figure,
-  width = FIGURE_WIDTH_IN,
-  height = FIGURE_HEIGHT_IN,
-  bg = "white"
-)
-```
+# Ensure sample identity, legend order and marker encodings agree.
+right_build <- ggplot_build(fig12)
+right_points <- right_build$data[[4]]
+stopifnot(identical(levels(df_combined$Label), c("Both follow-ups", "Follow-up completers", "All participants")),
+          identical(right_build$plot$scales$get_scales("fill")$get_limits(), levels(df_combined$Label)),
+          all(right_points$shape[right_points$group == 1] == 24), all(right_points$fill[right_points$group == 1] == "black"),
+          all(right_points$shape[right_points$group == 2] == 24), all(right_points$fill[right_points$group == 2] == "grey65"),
+          all(right_points$shape[right_points$group == 3] == 21), all(right_points$fill[right_points$group == 3] == "white"))
 
-## Reproducibility
-
-```{r session-info}
-sessionInfo()
 ```

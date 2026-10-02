@@ -1,0 +1,16 @@
+case,result,sentinel_reached,guard_rejected,binding_rejected,note
+G00 valid bound synthetic state,ok,True,False,,constructed synthetic state; no models
+G01 changed consumed data,ok,False,True,True,constructed synthetic state; no models
+G02 changed source code,ok,False,True,,constructed synthetic state; no models
+G03 changed contract,ok,False,True,True,constructed synthetic state; no models
+G04 missing QC record,ok,False,True,True,constructed synthetic state; no models
+G05 empty fixture record,ok,False,True,True,constructed synthetic state; no models
+G06 missing guard case,ok,False,True,True,constructed synthetic state; no models
+G07 absent readiness,ok,False,True,,constructed synthetic state; no models
+G08 altered sample fingerprint,ok,False,True,,constructed synthetic state; no models
+G09 redirected input path,ok,False,True,,constructed synthetic state; no models
+G10 changed input manifest,ok,False,True,True,constructed synthetic state; no models
+G11 missing QC rule,ok,False,True,True,constructed synthetic state; no models
+G12 independently wrong sample with updated record hash,ok,False,True,,constructed synthetic state; no models
+G13 incompatible R version despite updated lock hash,ok,False,True,,constructed synthetic state; no models
+G14 stale model lock,ok,False,True,,constructed synthetic state; no models

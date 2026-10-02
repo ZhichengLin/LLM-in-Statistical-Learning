@@ -1,0 +1,2 @@
+"N","observed","missing","cohort_S1_mean","observed_LT_mean","lower_change","upper_change","missing_LT_mean_for_zero_change","nonreturner_S1_mean","note"
+170,39,131,0.483860784313725,0.677777777777778,-0.328370588235294,0.442217647058824,0.426129770992366,0.468022900763359,"identification bounds (not confidence intervals); cohort170 excludes the five tool users entirely"

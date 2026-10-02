@@ -1,0 +1,2 @@
+"rule_id","gate","severity","status","execution","checked","eligible","observed","expected","note"
+"Q14b","Data contract","Critical","PASS","completed",336,336,"cohort IDs unmatched in item file=0; duplicate item-file IDs=0; item completeness vs one-month flag conflicts=0; task/17-item mismatches=0; max abs deviation=0.000471; response column classes=logical:17","0; 0; 0; 0; <= .0005 (3-dp rounding)","Independent source: correction_raw_data.xlsx follow_up items + answer key vs Study_2_Full_Data-derived cohort one-month means"

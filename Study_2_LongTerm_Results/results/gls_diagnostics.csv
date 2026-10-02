@@ -1,0 +1,5 @@
+"model","rows","participants","covariance","error","apVar_available","df_mode","min_eigen_cov","logLik","messages"
+"gls33",165,33,"unstructured","",TRUE,"appx-satterthwaite",0.00969467175983561,37.5727585823428,"Analytical Satterthwaite method not available; using appx-satterthwaite
+"
+"gls39",189,39,"unstructured","",TRUE,"appx-satterthwaite",0.010394842565892,37.1085042828248,"Analytical Satterthwaite method not available; using appx-satterthwaite
+"

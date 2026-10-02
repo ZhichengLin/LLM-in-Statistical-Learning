@@ -1,0 +1,6 @@
+"figure","check","observed","pass"
+"Figure 6 no_tools","original Panel A n (175 x3 stages, 84 one month)","24/29/31/58/59",TRUE
+"Figure 6 no_tools","original attrition series n (175, 84)","84/175",TRUE
+"Figure 6 no_tools","added 14-month endpoint n by label","16/10/7",TRUE
+"Figure 6 no_tools","eligible both-follow-up sample n","33",TRUE
+"Figure 6 no_tools","displayed B/C P values agree with regenerated original full-sample and completer tests","computed_completers_verified",TRUE

@@ -1,0 +1,30 @@
+sample,measure,category,n,denominator
+eligible39,source recall,correct,12,39
+eligible39,source recall,incorrect,13,39
+eligible39,source recall,do not remember,14,39
+eligible39,external-tool use (eligibility),yes,0,39
+eligible39,external-tool use (eligibility),no,39,39
+eligible39,prior similar-item exposure,yes,6,39
+eligible39,prior similar-item exposure,unsure,4,39
+eligible39,prior similar-item exposure,no,29,39
+eligible39,recorded item-order condition,fixed,18,39
+eligible39,recorded item-order condition,randomized,21,39
+eligible39,interval days,mean,437.659,39
+eligible39,interval days,sd,3.6874,39
+eligible39,interval days,min,429.3,39
+eligible39,interval days,max,448.1,39
+primary33,source recall,correct,11,33
+primary33,source recall,incorrect,11,33
+primary33,source recall,do not remember,11,33
+primary33,external-tool use (eligibility),yes,0,33
+primary33,external-tool use (eligibility),no,33,33
+primary33,prior similar-item exposure,yes,6,33
+primary33,prior similar-item exposure,unsure,4,33
+primary33,prior similar-item exposure,no,23,33
+primary33,recorded item-order condition,fixed,15,33
+primary33,recorded item-order condition,randomized,18,33
+primary33,interval days,mean,438.1697,33
+primary33,interval days,sd,3.3699,33
+primary33,interval days,min,432.0,33
+primary33,interval days,max,448.1,33
+excluded (reported tool use),count only,excluded,5,44

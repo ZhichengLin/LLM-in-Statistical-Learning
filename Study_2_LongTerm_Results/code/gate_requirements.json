@@ -1,0 +1,124 @@
+{
+  "description": "Public deposited-data gate inventory; original private-source evidence checks are outside this scope.",
+  "consumed_inputs": {
+    "cohort.csv": "data/cohort.csv",
+    "items.csv": "data/items.csv",
+    "intervals.csv": "data/intervals.csv"
+  },
+  "bound_code_extensions": [
+    ".py",
+    ".R",
+    ".Rmd",
+    ".json"
+  ],
+  "required_fixture_cases": [
+    "V00",
+    "V01",
+    "F01",
+    "F02",
+    "F03",
+    "F04",
+    "F05",
+    "F06",
+    "F07",
+    "F08",
+    "F09",
+    "F10",
+    "F11",
+    "F12",
+    "F13",
+    "F14",
+    "F15",
+    "F16",
+    "F17",
+    "F19",
+    "E01",
+    "E02",
+    "V02",
+    "F20",
+    "F21",
+    "F22",
+    "F23"
+  ],
+  "fixture_case_roles": {
+    "valid": [
+      "V00",
+      "V01"
+    ],
+    "reported_use_yes": [
+      "F12",
+      "F15",
+      "F16",
+      "F19"
+    ],
+    "unknown_response": [
+      "F07",
+      "F13",
+      "F17"
+    ],
+    "missing_response": [
+      "F14"
+    ],
+    "cross_language_rule": [
+      "E01",
+      "E02"
+    ]
+  },
+  "required_guard_cases": [
+    "G00",
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G10",
+    "G11",
+    "G12",
+    "G13",
+    "G14"
+  ],
+  "required_qc_rules": [
+    "Q01",
+    "Q02",
+    "Q03",
+    "Q04",
+    "Q05",
+    "Q06",
+    "Q07",
+    "Q08",
+    "Q09",
+    "Q10",
+    "Q11",
+    "Q12",
+    "Q13",
+    "Q14",
+    "Q14b",
+    "Q15",
+    "Q16",
+    "Q17",
+    "Q18",
+    "Q19",
+    "Q20",
+    "Q21",
+    "Q23",
+    "Q24",
+    "Q25",
+    "Q26",
+    "Q27",
+    "Q28"
+  ],
+  "required_records": [
+    "records/qc_summary.json",
+    "records/qc_checks.csv",
+    "records/qc_fixture_results.csv",
+    "records/qc_m1_scoring.csv",
+    "records/guard_tests.csv",
+    "records/input_verification.json",
+    "records/contract_freeze.json",
+    "private/qc_fingerprints.json"
+  ]
+}

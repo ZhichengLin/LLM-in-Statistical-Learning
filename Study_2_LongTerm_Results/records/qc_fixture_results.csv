@@ -1,0 +1,29 @@
+case,target_rule,expected,observed,result,note
+V00 valid control (one reported user),all applicable,PASS,PASS; derived sets equal construction=True,ok,"not applicable in fixture: Q20,Q21"
+F23 confidence redundancy fault,Q28,FAIL Q28,Q28=FAIL,ok,other FAIL rules: none
+F20 excluded outcome suppression fault,Q11+Q12,FAIL Q11+Q12,Q11=FAIL;Q12=FAIL,ok,other FAIL rules: none
+F21 invalid return flag,Q11,FAIL Q11,Q11=FAIL,ok,"other FAIL rules: Q12,Q13,Q15,Q17,Q18,Q24,Q26"
+F22 excluded auxiliary suppression fault,Q15,FAIL Q15,Q15=FAIL,ok,other FAIL rules: none
+V02 row-order invariance,all applicable,PASS all applicable,PASS,ok,other FAIL rules: none
+F01 duplicate cohort ID,Q05,FAIL Q05,Q05=FAIL,ok,other FAIL rules: none
+F02 missing one-month task in primary,Q12,FAIL Q12,Q12=FAIL,ok,other FAIL rules: none
+F03 accuracy out of range,Q13,FAIL Q13,Q13=FAIL,ok,other FAIL rules: Q14
+F04 item label conflict,Q07,FAIL Q07,Q07=FAIL,ok,other FAIL rules: none
+F05 long-term mean off score grid,Q13,FAIL Q13,Q13=FAIL,ok,other FAIL rules: Q14
+F06 item code 2,Q13,FAIL Q13,Q13=FAIL,ok,other FAIL rules: Q14
+F07 invalid tool-use value,Q15+Q23,FAIL Q15+Q23,Q15=FAIL;Q23=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=True; other FAIL rules: Q11,Q12,Q13,Q17,Q18,Q24,Q27"
+F08 interval ID outside returns,Q17,FAIL Q17,Q17=FAIL,ok,other FAIL rules: none
+F09 rescoring mismatch,Q14,FAIL Q14,Q14=FAIL,ok,other FAIL rules: Q18
+F10 ragged CSV row,Q02,FAIL Q02,Q02=FAIL,ok,other FAIL rules: none
+F11 flag/data inconsistency,Q10,FAIL Q10,Q10=FAIL,ok,"other FAIL rules: Q12,Q24"
+F12 tool user relabelled no in items,Q07+Q26,FAIL Q07+Q26,Q07=FAIL;Q26=FAIL,ok,other FAIL rules: none
+F13 unknown tool-use response (unsure),Q15+Q23+Q24,FAIL Q15+Q23+Q24,Q15=FAIL;Q23=FAIL;Q24=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=True; other FAIL rules: Q11,Q12,Q13,Q17,Q18,Q27"
+F14 missing tool-use response (blank),Q15+Q23+Q24,FAIL Q15+Q23+Q24,Q15=FAIL;Q23=FAIL;Q24=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=True; other FAIL rules: Q11,Q12,Q13,Q17,Q18,Q27"
+F15 extra reported user (non-Human),Q15+Q23,FAIL Q15+Q23,Q15=FAIL;Q23=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=False; other FAIL rules: Q11,Q12,Q13,Q17,Q18,Q24,Q27"
+F16 reported user without one-month data,Q23,FAIL Q23,Q23=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=False; other FAIL rules: Q11,Q12,Q13,Q14,Q15,Q16,Q17,Q18,Q24,Q25,Q26"
+F17 case variant No is not exact no,Q15+Q23,FAIL Q15+Q23,Q15=FAIL;Q23=FAIL,ok,"participant kept out of eligible set=True; naive ""!= yes"" rule would admit it=True; other FAIL rules: Q11,Q12,Q13,Q17,Q18,Q24,Q27"
+F19 excluded participant item tool blank,Q07+Q26,FAIL Q07+Q26,Q07=FAIL;Q26=FAIL,ok,other FAIL rules: none
+V01 whitespace-trimmed no stays eligible,all applicable,PASS all applicable,PASS,ok,other FAIL rules: none
+E01 eligibility rule value grid (Python and R),eligibility,contract classes,Python equal=True; R equal=True; values=12,ok,"blank, NA, unsure, case variants excluded; trimmed no eligible"
+E02 Python/R keyed fingerprints of derived samples,eligibility,identical,R exit=0; samples compared=11; all equal=True,ok,synthetic key; HMAC-SHA256 over byte-sorted IDs
+E03 required fixture coverage (gate_requirements.json),inventory,all required IDs once,required=27; present=27; duplicate IDs=0,ok,missing: none

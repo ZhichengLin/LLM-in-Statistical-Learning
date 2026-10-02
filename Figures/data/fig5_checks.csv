@@ -1,0 +1,6 @@
+"figure","check","observed","pass"
+"Figure 5 no_tools","original left positions n (175 x3 stages, 84 one month)","24/29/31/58/59",TRUE
+"Figure 5 no_tools","original right series n (84, 175)","84/175",TRUE
+"Figure 5 no_tools","added 14-month endpoint n by label","16/10/7",TRUE
+"Figure 5 no_tools","matched trajectory n","33",TRUE
+"Figure 5 no_tools","Panel B P values from generated contrasts","italic(P)~'= 0.142' | italic(P)~'< 0.001' | italic(P)~'= 0.220'",TRUE

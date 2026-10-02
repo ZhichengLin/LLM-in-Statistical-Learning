@@ -1,0 +1,2 @@
+"population","n","fixed","randomized","contrast","estimate","SE","df","t","p","lower","upper","vcov","note"
+"eligible39",39,18,21,"randomized-fixed",0.0279191726701058,0.0835837633666352,34,0.334026269523663,0.740411332407968,-0.14194347149985,0.197781816840062,"HC3","ancillary association adjusted for label and S1 accuracy; replaces the historical all-44 estimate"

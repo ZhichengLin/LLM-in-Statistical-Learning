@@ -1,2 +1,11 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Preserve CSV bytes used by pinned input manifests.
+*.csv -text whitespace=cr-at-eol
+
+# Preserve native R session output and the generated renv bootstrap verbatim.
+Figures/figure/*_sessionInfo.txt whitespace=-blank-at-eol
+Study_2_LongTerm_Results/records/environment_sessionInfo.txt whitespace=-blank-at-eol
+Study_2_LongTerm_Results/records/sessionInfo.txt whitespace=-blank-at-eol
+Study_2_LongTerm_Results/renv/activate.R whitespace=-blank-at-eol

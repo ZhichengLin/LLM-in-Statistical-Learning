@@ -1,0 +1,8 @@
+{
+  "schema": "figure-input-manifest.v1",
+  "purpose": "Immutable deposited source workbook and helper; generated model/plot outputs are validated by value, not ZIP container bytes.",
+  "file_sha256": {
+    "Study_2_FollowUp_Results/MAR/data/Study_2_Full_Data.xlsx": "8a6edc5e9b573febbe11d7fee54135c2b61157b448f6463890aec952d7b005bb",
+    "Figures/plot_util_test.R": "cbf419df89625276bb0152cd13dc84385a6395b30534f54185e63e5ca519e0a9"
+  }
+}

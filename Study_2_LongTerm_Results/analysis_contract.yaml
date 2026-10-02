@@ -1,0 +1,465 @@
+contract_id: longterm-public-reproduction-2026-10-03
+version: 3
+amendments:
+- version: 3
+  analysis_changes: none
+  changes:
+  - Public path adapter and manifest-bound QC; formulas, contrasts, seeds, multiplicity and model fallback order
+    retained.
+  - Explicit follow2_returned preserves 44 observation counts while masking the excluded five long-term outcomes;
+    eligible estimands unchanged.
+  - Public derivative keys preserve original participant order; intervals contain eligible39 only.
+status:
+  frozen_before_new_model_fitting: false
+  registration: 'Not preregistered. The long-term wave is exploratory. Two reporting decisions were made by the
+    PI after long-term results were known: (1) the 2026-09-30 designation of participants with both follow-ups as
+    the primary long-term sample; (2) the 2026-09-30 decision, made after the prior no-tools sensitivity rows were
+    known, that reported external tool/material use at the long-term wave is a mandatory eligibility exclusion.'
+  authority: PI-authorized research-repository update; public adaptation of the executed 2026-09-30 exploratory
+    analysis.
+  known_before_contract:
+  - prior primary-38 package rows for s38_no_tools (= primary33) and all44 no_tools (= eligible39) paired accuracy/confidence
+  - prior primary-38 package correction-timing fit for s38_no_tools (= primary33)
+  - prior 38/44 label models, GLS44, full-cohort 175/173 MAR models (all include tool users; historical only)
+  not_computed_before_contract:
+  - 33/39 label models, Pillai omnibus, GLS39, lm39
+  - eligible no-prior-exposure (primary 23 / eligible 29) and 17-item rows for 33/39
+  - eligible-39 correction timing
+  - 170-person full-cohort models (covariate-complete n from data), attrition bounds for 170, item-order association
+    in 39
+  claims_prohibited:
+  - absence of assistance (tool use is self-report; 'no' is not proof of unaided answering)
+  - equality or equivalence from similar or nonsignificant results
+  - causal attribution of long-term change to the explanations or labels
+  - representativeness of the 33 or 39 for the randomized cohort
+  - any test of 33 versus 39 as independent groups; the LT-M1 contrast uses the same 33 people in both
+  - label-split inference for the six eligible returners without one-month data (descriptive only, overall)
+  - any outcome summary or inference for the five excluded tool users
+  - comparison of correction-timing ORs across waves or specifications as a change test
+  - describing prior 38/44/175/173 long-term results as current evidence; they are historical
+  contract_role: Retrospective documentation of previously executed analyses; public portability and validation
+    revision only.
+parents:
+  scientific_source: executed 2026-09-30 no-tools analysis (33/39/170); statistical code preserved except paths
+    and explicit return flag
+  changes_from_parent:
+  - public inputs/paths and bound QC
+  - suppressed ineligible long-term outcomes
+  - explicit return indicator
+inputs:
+  public_dir: data
+  manifest: input_manifest.json
+  historical_controls: historical_controls
+  on_hash_mismatch: Stop before QC/inference; all manifest files required and exact SHA-256 must match.
+  source_boundary: Reproduction begins at deposited analysis-ready inputs; private roster linkage, raw survey execution
+    and administration/ethics records are not reconstructed.
+  public_missingness: Blank LT outcomes in five recorded returns reporting tools are privacy suppression. Blank
+    LT outcomes in follow2_returned=0 indicate not collected.
+  identifier_policy: Sequential numeric public keys retain source numeric order; no source keys or mapping deposited.
+  interval_precision: Eligible intervals rounded to 0.1 day for public release; all 1-decimal reported mean/SD/min/max
+    summaries unchanged. Intervals are descriptive metadata and are never model covariates.
+eligibility:
+  question_deployed_zh: 在回答刚才的统计题时，您是否使用了任何外部工具或资料，例如人工智能工具、网站、书籍或笔记？
+  question_en: When answering the statistics questions just now, did you use any external tools or materials, such
+    as AI tools, websites, books, or notes?
+  response_options:
+    'no': 没有
+    'yes': 有
+  source: Recorded responses retained from executed exploratory analysis; source delivery evidence is outside deposited-data
+    reproduction.
+  rule: long-term eligible iff follow2_returned == 1 AND trimmed follow2_tool_use == 'no' (exact, case-sensitive);
+    eligible outcomes must be complete
+  exclusions:
+    reported_use: trimmed follow2_tool_use == 'yes' -> excluded (mandatory)
+    unknown_or_missing: any other value, including blank/NA -> not eligible (excluded as unknown)
+  expected:
+    long_term_returns: 44
+    excluded_reported_use: 5
+    excluded_unknown: 0
+    eligible: 39
+    excluded_all_Human: true
+    excluded_all_completed_1month: true
+  scope: Excluded participants' records (all waves S1-S3, one month, long term; item rows; intervals) are omitted
+    from every revised long-term fit, trajectory, descriptive, timing sample and the full-cohort model data. The
+    original initial-session (n = 175) and one-month (n = 84) analyses remain original historical results.
+  interpretation: self-report; not proven absence of assistance
+  evidence_retention: Runtime model objects and membership fingerprints in ignored private/ only; QC/model outputs
+    aggregate.
+  unmatched_submissions: two remain outside the snapshot; no eligibility additions
+samples:
+  cohort175:
+    role: historical reference only; not used in any new fit
+    expected_n: 175
+    by_label:
+      AI: 59
+      AI Human: 58
+      Human: 58
+  excluded_tool_users:
+    definition: long-term returners with trimmed tool use == 'yes'
+    expected_n: 5
+    by_label:
+      AI: 0
+      AI Human: 0
+      Human: 5
+  cohort170:
+    definition: cohort175 minus all long-term returners not eligible
+    expected_n: 170
+    by_label:
+      AI: 59
+      AI Human: 58
+      Human: 53
+    role: full-cohort MAR models
+  covariate_complete:
+    definition: cohort170 with non-missing Age, Gender, Field and collapsed Used_LLM_Hours
+    expected_n: 168
+    role: adjusted full-cohort models
+  one_month_eligible:
+    definition: cohort170 AND completed_1month == 1
+    expected_n: 79
+    by_label:
+      AI: 29
+      AI Human: 24
+      Human: 26
+  eligible39:
+    definition: eligibility rule
+    expected_n: 39
+    by_label:
+      AI: 19
+      AI Human: 12
+      Human: 8
+    role: focal sensitivity (one-month participation not required)
+  primary33:
+    definition: eligible39 AND completed_1month == 1
+    expected_n: 33
+    by_label:
+      AI: 16
+      AI Human: 10
+      Human: 7
+    role: primary
+  additional6:
+    definition: eligible39 AND completed_1month != 1
+    expected_n: 6
+    role: descriptive only; overall, no label split
+  primary33_no_prior_exposure:
+    definition: primary33 AND follow2_prior_exposure == 'no'
+    expected_n: 23
+    role: ancillary robustness
+  eligible39_no_prior_exposure:
+    definition: eligible39 AND follow2_prior_exposure == 'no'
+    expected_n: 29
+    role: ancillary robustness
+  one_month_only:
+    definition: cohort170 AND completed_1month == 1 AND no long-term return
+    expected_n: 46
+  neither_followup:
+    definition: cohort170 AND completed_1month != 1 AND no long-term return
+    expected_n: 85
+  relations:
+  - primary33 subset of eligible39 subset of long-term returns (44)
+  - additional6 = eligible39 minus primary33; primary33 and additional6 disjoint
+  - excluded_tool_users and eligible39 disjoint; union = long-term returns when excluded_unknown = 0
+  - excluded_tool_users subset of one-month completers (84)
+  - cohort170 and excluded_tool_users disjoint; cohort170 union excluded = cohort175
+  - LT-M1 pairs in eligible39 = primary33 (identical 33 participants)
+unit:
+  observational: participant x wave x task (proportion correct over 6/5/6 items; mean recorded confidence)
+  analysis: participant x wave equal-task mean = mean of the three task means
+  item_weighted_variant: participant x wave 17-item mean (task0 columns); accuracy only
+  inferential: participant
+  waves:
+    S1: 1
+    S2: 2
+    S3: 3
+    M1: 4
+    LT: 5
+  outcomes:
+    accuracy: primary
+    confidence: 'secondary, exploratory: recorded 1-5 codes; deployed long-term anchors/labels/code order verified
+      against the original Chinese instrument (student-evidence addendum E02-E03); historical platform delivery
+      of earlier waves not independently audited'
+primary_analysis:
+  population: primary33
+  estimand: mean within-person change, participants weighted equally
+  contrasts:
+    LT-S1:
+    - -1
+    - 0
+    - 0
+    - 0
+    - 1
+    LT-S3:
+    - 0
+    - 0
+    - -1
+    - 0
+    - 1
+    LT-M1:
+    - 0
+    - 0
+    - 0
+    - -1
+    - 1
+  test: one-sample t on per-person differences, df = n - 1, two-sided
+  interval: pointwise 95% t
+  bootstrap: percentile, 5000 participant resamples of the differences, quantile type 7
+  multiplicity: Holm within the three contrasts for each outcome x sample x weighting family
+  threshold: alpha = 0.05 two-sided on the Holm-adjusted P
+paired_families:
+  seed: 20260930
+  seeding: set.seed(20260930) once, then families evaluated in exactly this order (sequential RNG stream)
+  order:
+  - family: primary33|accuracy|equal-task
+    role: primary
+  - family: primary33|confidence|equal-task
+    role: secondary
+  - family: eligible39|accuracy|equal-task
+    role: focal sensitivity
+  - family: eligible39|confidence|equal-task
+    role: secondary sensitivity
+  - family: primary33_no_prior_exposure|accuracy|equal-task
+    role: ancillary robustness
+  - family: primary33_no_prior_exposure|confidence|equal-task
+    role: ancillary robustness
+  - family: eligible39_no_prior_exposure|accuracy|equal-task
+    role: ancillary robustness
+  - family: eligible39_no_prior_exposure|confidence|equal-task
+    role: ancillary robustness
+  - family: primary33_item_weighted|accuracy|17-item
+    role: ancillary scoring
+  - family: eligible39_item_weighted|accuracy|17-item
+    role: ancillary scoring
+  positive_controls:
+  - primary33 accuracy and confidence rows equal prior primary-38 package rows with sample s38_no_tools in every
+    numeric column including bootstrap bounds (same people, same order, same seed position); tolerance 1e-12
+  - eligible39 accuracy and confidence rows equal prior rows with sample all44_no_tools in n, means, estimate, SE,
+    df, t, P, CI and Holm P (tolerance 1e-12); bootstrap bounds differ by RNG position (documented)
+  lt_m1_note: 'LT-M1 rows in every eligible39 family use the same participants as the matching primary33 family:
+    estimate/t-CI/P identical; bootstrap draws differ by RNG position'
+secondary_analyses:
+  descriptives:
+    populations:
+    - primary33
+    - eligible39
+    - additional6
+    - primary33 by label
+    - eligible39 by label
+    statistics:
+    - n
+    - mean
+    - sd
+    - se
+    - 95% t CI
+    label_specific_changes: descriptive only; no P values
+    selection_profile_groups:
+    - primary33
+    - additional6
+    - one-month only (46)
+    - neither follow-up (85)
+    excluded_tool_users: counts only (5, all Human, all with one-month data); no outcome summaries
+  mlm33:
+    population: primary33
+    outcome: accuracy equal-task
+    omnibus:
+      name: Phase x Label (profile parallelism)
+      model: lm(cbind(S2-S1, S3-S1, M1-S1, LT-S1) ~ Label)
+      statistic: Pillai trace, F approximation (df from data; expected 8, 56)
+      single_omnibus: true
+    label_balanced_temporal_contrasts:
+      model: lm(LT - reference ~ Label); emmeans ~1 with equal label weights
+      contrasts:
+      - LT-S1
+      - LT-S3
+      - LT-M1
+      df: exact residual (expected 30)
+      multiplicity: Holm-3
+    lt_level_label_pairs:
+      model: lm(LT ~ Label)
+      family: 3 pairs
+      adjustment: Tukey (P and simultaneous 95% CI)
+    lt_minus_s1_gain_label_pairs:
+      model: lm(LT - S1 ~ Label)
+      family: 3 pairs
+      adjustment: Tukey (P and simultaneous 95% CI)
+  gls33_equivalence_diagnostic:
+    model: gls(Value ~ Phase*Label, correlation=corSymm(form=~wave|ID), weights=varIdent(form=~1|Phase), method=REML,
+      glsControl(msMaxIter=300))
+    rows_expected: 165
+    purpose: reproduce MLM33 estimates/SEs (|dEstimate| <= 1e-6; relative dSE <= 1e-3); not reported as inference
+  gls39:
+    population: eligible39
+    rows_expected: 189
+    model: same GLS formula; sum contrasts; REML
+    missing_data: one-month outcome missing for the additional 6; MAR within eligible returners
+    df: emmeans mode appx-satterthwaite from a single reference grid; set.seed(20260930) before the grid
+    contrasts:
+      label_balanced_temporal:
+      - LT-S1
+      - LT-S3
+      - LT-M1
+      weights: equal labels
+      multiplicity: Holm-3
+    label_pairs: diagnostic cross-check against lm39 only
+    omnibus: none
+    fallback_order:
+    - unstructured corSymm + varIdent
+    - 'heterogeneous compound symmetry: corCompSymm + varIdent'
+    - mark unstable; no GLS39 inference
+    df_unavailable_rule: estimate and SE only; df, P, adjusted P and CI unavailable (no substitute df)
+  lm39_label_contrasts:
+    population: eligible39
+    df: exact residual (expected 36)
+    lt_level_label_pairs:
+      model: lm(LT ~ Label)
+      adjustment: Tukey-3
+    lt_minus_s1_gain_label_pairs:
+      model: lm(LT - S1 ~ Label)
+      adjustment: Tukey-3
+  correction_timing:
+    source: items.csv rows of eligible participants only
+    item_difficulty: 'fixed original-study nuisance predictor: per-item mean S1 correctness over the original 175
+      initial-session participants, centered at the mean of the 17 item values (unchanged historical definition).
+      It contains no long-term response; no excluded participant contributes any response row to a revised long-term
+      fit.'
+    eligibility: S1 == 0 AND (S2 == 1 OR S3 == 1) AND LT observed; Early if S2 == 1 (even if S3 == 0), else Late
+    formula: LT ~ Timing + Label + Task + item_difficulty_c + baseline + (1|ID) + (1|Item)
+    family: binomial logit
+    control: glmerControl(optimizer='bobyqa', optCtrl=list(maxfun=2e5))
+    coding: Timing treatment-coded, Late reference; Label and Task sum-coded
+    item_intercept_rule: drop (1|Item) and refit only if its variance < 1e-8
+    samples:
+      primary33: secondary
+      eligible39: sensitivity
+    positive_controls:
+    - 'primary33 reproduces the primary-38 package s38_no_tools timing row (same participants): OR and Wald P 1e-4;
+      profile bounds 1e-3; participants/responses exact'
+    - 'eligible39 reproduces the 44-leading package no_tools timing row (same participants): OR and P 1e-4; profile
+      bounds 1e-3; participants/responses exact'
+    prior_all44_control: frozen historical diagnostic only; not refitted
+    prohibited:
+    - Timing x Label term
+    - OR comparison or replication test
+  full_cohort_mar:
+    population: cohort170 (unadjusted); covariate-complete subset of cohort170 (adjusted; n from data)
+    missing_data: MAR for one-month and long-term outcomes among the 170; the cohort is the original analytic cohort
+      minus the five excluded participants, not the randomized cohort
+    gls_specs:
+      accuracy_unadjusted: gls(Value ~ Phase*Label, corSymm(form=~wave|ID), varIdent(form=~1|Phase), REML, msMaxIter=300);
+        participant-wave equal-task means
+      accuracy_adjusted: adds Age + Gender + Field + Used_LLM_Hours (None/Low/High); covariate-complete rows
+      confidence_adjusted: confidence analogue of accuracy_adjusted
+      df: emmeans mode 'satterthwaite' with stored formula/data (as in the 44-leading covariance_sensitivity.R)
+      fallback: corCompSymm + varIdent, then participant random intercept (lmer, Kenward-Roger)
+    lmer_specs:
+      historical_structure_accuracy: Value ~ Phase*Label + (1|ID) on task rows
+      task_dependence_accuracy: Value ~ Phase*Label + (1|Task) + (1|ID) + (1|ID:Task)
+      task_adjusted_accuracy: Value ~ Phase*Label + Age + Gender + Field + Used_LLM_Hours + (1|Task) + (1|ID) +
+        (1|ID:Task)
+      task_adjusted_confidence: confidence analogue
+      df: Kenward-Roger via emmeans (lmer.df = 'kenward-roger')
+    contrasts: LT-S1, LT-S3, LT-M1 with equal label weights; Holm-3 within each model
+    lt_label_pairs: Tukey-3 at the long-term phase, each model
+    attrition_bounds: finite-cohort mean-change bounds and tipping values for cohort170 (observed LT = eligible39)
+  item_order_association:
+    population: eligible39
+    model: lm(LT_accuracy ~ follow2_item_order + Label + S1_accuracy), HC3 covariance; emmeans contrast randomized
+      - fixed
+    role: ancillary association; replaces the historical all-44 estimate
+  auxiliary_counts:
+  - primary33
+  - eligible39
+  selection_statement: report 33/170, 33/79, 39/170, 6/91, 33/39 and observation counts 44 -> 5 excluded -> 39 eligible
+    -> 33 both
+multiplicity_summary:
+- 'Holm-3: each paired family (10), MLM33 label-balanced, GLS39 label-balanced, each full-cohort model'
+- 'Tukey-3: each label-pair family (LT level; LT-S1 gain) in MLM33 (df 30), lm39 (df 36) and full-cohort LT labels'
+- 'Pillai omnibus: single unadjusted test'
+- 'Correction timing and item-order association: single estimate per sample, unadjusted'
+- No adjustment across families; all long-term results exploratory
+reporting_columns:
+  paired:
+  - family_id
+  - sample
+  - sample_role
+  - population
+  - measure
+  - weighting
+  - contrast
+  - n
+  - reference_mean
+  - longterm_mean
+  - estimate
+  - SE
+  - df
+  - t
+  - p
+  - p_holm
+  - lower
+  - upper
+  - boot_lower
+  - boot_upper
+  - boot_seed
+  - boot_B
+  - row_origin
+  - note
+  model_contrasts:
+  - analysis
+  - population
+  - model
+  - family
+  - contrast
+  - estimate
+  - SE
+  - df
+  - df_method
+  - t
+  - p
+  - p_adjusted
+  - adjustment
+  - lower
+  - upper
+  - ci_type
+  descriptives:
+  - population
+  - label
+  - measure
+  - phase
+  - n
+  - mean
+  - sd
+  - se
+  - lower
+  - upper
+  timing:
+  - sample
+  - participants
+  - responses
+  - items
+  - early_responses
+  - late_responses
+  - both_category_participants
+  - beta
+  - se
+  - z
+  - p_wald
+  - or
+  - wald_lower
+  - wald_upper
+  - profile_lower
+  - profile_upper
+  - singular
+  - item_intercept_dropped
+  - warnings
+  - profile_warnings
+  units: accuracy stored as proportions; reports convert to percentage points; confidence in recorded scale units
+verification:
+  entry_guard: Bound readiness verifies exact manifest inputs, contract, every code source, complete QC/fixture/guard
+    inventories; independently derived R sample fingerprints must match Python QC.
+  all_fit_membership_audit: Every saved model/computation matches its contracted sample; excluded participants absent.
+  independent_recomputation:
+  - verify_models.R
+  - verify_outputs.py
+  known_diagnostics: Unadjusted full-cohort GLS df.error fallback and singular task-adjusted confidence model remain
+    strict diagnostic FAILs; numerical checks can PASS with overall QUALIFIED.
+seeds:
+  paired_bootstrap: 20260930
+  emmeans_and_other: 20260930

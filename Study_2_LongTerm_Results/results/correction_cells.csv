@@ -1,0 +1,13 @@
+"sample","Label","Timing","responses","successes","failures","participants"
+"primary33","AI","Late",55,28,27,14
+"primary33","AI Human","Late",20,13,7,7
+"primary33","Human","Late",24,17,7,6
+"primary33","AI","Early",45,31,14,14
+"primary33","AI Human","Early",46,36,10,9
+"primary33","Human","Early",14,7,7,5
+"eligible39","AI","Late",67,37,30,17
+"eligible39","AI Human","Late",25,14,11,8
+"eligible39","Human","Late",24,17,7,6
+"eligible39","AI","Early",51,35,16,16
+"eligible39","AI Human","Early",53,39,14,10
+"eligible39","Human","Early",21,11,10,6

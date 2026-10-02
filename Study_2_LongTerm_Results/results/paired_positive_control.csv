@@ -1,0 +1,13 @@
+"sample","measure","contrast","prior_target","max_abs_diff_deterministic","max_abs_diff_bootstrap","bootstrap_required_equal","pass"
+"primary33","accuracy","LT-S1","s38_no_tools",3.10862446895044e-15,1.38777878078145e-16,TRUE,TRUE
+"primary33","accuracy","LT-S3","s38_no_tools",4.30211422042248e-16,4.71844785465692e-16,TRUE,TRUE
+"primary33","accuracy","LT-M1","s38_no_tools",1.11022302462516e-16,1.38777878078145e-17,TRUE,TRUE
+"primary33","confidence","LT-S1","s38_no_tools",3.99680288865056e-15,3.88578058618805e-16,TRUE,TRUE
+"primary33","confidence","LT-S3","s38_no_tools",4.44089209850063e-15,2.77555756156289e-16,TRUE,TRUE
+"primary33","confidence","LT-M1","s38_no_tools",3.99680288865056e-15,2.22044604925031e-16,TRUE,TRUE
+"eligible39","accuracy","LT-S1","all44_no_tools",8.88178419700125e-16,0.00147222222222229,FALSE,TRUE
+"eligible39","accuracy","LT-S3","all44_no_tools",1.77635683940025e-15,0.00255505698005672,FALSE,TRUE
+"eligible39","accuracy","LT-M1","all44_no_tools",1.11022302462516e-16,0.00506691919191914,FALSE,TRUE
+"eligible39","confidence","LT-S1","all44_no_tools",3.5527136788005e-15,0.01625754985755,FALSE,TRUE
+"eligible39","confidence","LT-S3","all44_no_tools",3.77475828372553e-15,0.00680648148148159,FALSE,TRUE
+"eligible39","confidence","LT-M1","all44_no_tools",3.99680288865056e-15,0.00843442760942748,FALSE,TRUE

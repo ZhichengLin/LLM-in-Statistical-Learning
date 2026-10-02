@@ -97,3 +97,16 @@ $RECYCLE.BIN/
 /REPRODUCIBILITY_REPORT.md
 /audit/
 /reproducibility/
+
+# Private runtime records for the public long-term adapter
+Study_2_LongTerm_Results/private/
+Study_2_LongTerm_Results/qc_fixtures/
+Study_2_LongTerm_Results/records/run_config.json
+Study_2_LongTerm_Results/renv/library/
+Study_2_LongTerm_Results/renv/local/
+Study_2_LongTerm_Results/renv/staging/
+Study_2_LongTerm_Results/renv/sandbox/
+__pycache__/
+*.pyc
+# Superseded local figure source retained outside the release payload
+/Figures/Figure_Study2_1_updated.Rmd

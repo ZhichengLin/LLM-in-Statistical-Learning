@@ -1,0 +1,8 @@
+"family","model","measure","nobs","participants","covariance","singular","boundary_components","requested_df_mode","effective_df_mode","apVar_available","apVar_message","df_error_used","LT_n","warnings","fallback_reason"
+"gls","accuracy_unadjusted","accuracy",628,170,"unstructured",,"","satterthwaite","df.error",FALSE,"Non-positive definite approximate variance-covariance",599,39,"",""
+"gls","accuracy_adjusted","accuracy",622,168,"unstructured",,"","satterthwaite","appx-satterthwaite",TRUE,"",,39,"",""
+"gls","confidence_adjusted","confidence",622,168,"unstructured",,"","satterthwaite","appx-satterthwaite",TRUE,"",,39,"",""
+"lmer","historical_structure","accuracy",1884,170,"random intercepts",FALSE,"","kenward-roger","kenward-roger",,"",,,"",""
+"lmer","task_dependence","accuracy",1884,170,"random intercepts",FALSE,"","kenward-roger","kenward-roger",,"",,,"",""
+"lmer","task_adjusted","accuracy",1866,168,"random intercepts",FALSE,"","kenward-roger","kenward-roger",,"",,,"",""
+"lmer","task_adjusted","confidence",1866,168,"random intercepts",TRUE,"ID:Task","kenward-roger","kenward-roger",,"",,,"boundary (singular) fit: see help('isSingular')",""

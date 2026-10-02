@@ -1,0 +1,2 @@
+contrast,odds.ratio,SE,df,asymp.LCL,asymp.UCL,null,z.ratio,p.value,profile_lower,profile_upper,population,participants,items
+Early/Late,2.12818126079009,0.944273006528035,Inf,0.891930258678536,5.07792558298046,1,1.70220545805646,0.0887168599708772,0.920894113024045,5.36280941157112,no_tools,37,241

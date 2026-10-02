@@ -1,0 +1,16 @@
+"check","max_abs_diff","tolerance","pass"
+"Pillai value",3.88578058618805e-16,1e-10,TRUE
+"Pillai approx F",2.66453525910038e-15,1e-08,TRUE
+"Pillai df1/df2 (expected 8, 56)",0,0,TRUE
+"Pillai P",3.33066907387547e-16,1e-10,TRUE
+"Tukey pairs primary33 LT level (df 30 )",4.9960036108132e-16,1e-06,TRUE
+"Tukey pairs primary33 LT-S1 gain (df 30 )",6.66133814775094e-16,1e-06,TRUE
+"Tukey pairs eligible39 LT level (df 36 )",6.38378239159465e-16,1e-06,TRUE
+"Tukey pairs eligible39 LT-S1 gain (df 36 )",6.10622663543836e-16,1e-06,TRUE
+"Label-balanced exact contrasts (33; df 30)",3.88578058618805e-16,1e-10,TRUE
+"Paired t P values (pt)",3.94129173741931e-15,1e-12,TRUE
+"Paired Holm (manual)",1.346145417358e-15,1e-12,TRUE
+"Paired CI half-width = qt * SE",1.47104550762833e-15,1e-12,TRUE
+"fullcohort_gls_contrasts.csv P from t(df) and Holm",3.19189119579733e-16,1e-10,TRUE
+"fullcohort_lmer_contrasts.csv P from t(df) and Holm",5.68989300120393e-16,1e-10,TRUE
+"attrition bounds (170)",3.33066907387547e-16,1e-12,TRUE

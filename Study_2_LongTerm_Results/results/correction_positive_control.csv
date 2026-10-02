@@ -1,0 +1,11 @@
+"check","prior_target","prior","current","tolerance","abs_diff","pass"
+"primary33 OR","primary-38 package s38_no_tools row","2.10925794571428","2.10925794571428",1e-04,0,TRUE
+"primary33 Wald P","primary-38 package s38_no_tools row","0.133352728899707","0.133352728899707",1e-04,0,TRUE
+"primary33 profile lower","primary-38 package s38_no_tools row","0.821369744192861","0.821369744192861",0.001,0,TRUE
+"primary33 profile upper","primary-38 package s38_no_tools row","5.94873301330005","5.94873301330005",0.001,0,TRUE
+"primary33 participants/responses","primary-38 package s38_no_tools row","32/204","32/204",0,,TRUE
+"eligible39 OR","44-leading package no_tools row","2.12818126079009","2.12818081365999",1e-04,4.4713010005637e-07,TRUE
+"eligible39 P","44-leading package no_tools row","0.0887168599708772","0.0887160374819792",1e-04,8.22488897989082e-07,TRUE
+"eligible39 profile lower","44-leading package no_tools row","0.920894113024045","0.92089411830948",0.001,5.2854349785747e-09,TRUE
+"eligible39 profile upper","44-leading package no_tools row","5.36280941157112","5.36294475224541",0.001,0.000135340674289885,TRUE
+"eligible39 participants/responses","44-leading package no_tools row","37/241","37/241",0,,TRUE

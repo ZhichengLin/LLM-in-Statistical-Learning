@@ -327,6 +327,7 @@ tasks <- list(
       "Study-2-Main-Results.html",
       "results/Baseline/Baseline_Charateristics_By_Label.xlsx",
       "results/H1/H1_Performance_Comparison_LMM.xlsx",
+      "results/H1/H1_S2_minus_S1_Gain_Contrasts.csv",
       "results/H1/H1_Model_Specification_Comparison.xlsx",
       "results/H1/H1_Model_Specification_Comparison.csv",
       "results/H1/H1_Performance_Comparison_LMM_Task.xlsx",
@@ -463,6 +464,17 @@ tasks <- list(
     )
   ),
   task(
+    "Figure-6-completer-tests", "Figures", "reproduce_completer_tests.R", type = "rscript",
+    expected = "data/figure6_completer_tests.csv"
+  ),
+  task(
+    "S2-longterm", "Study_2_LongTerm_Results", "run.R", type = "nested_r",
+    expected = c("results/paired_contrasts.csv", "results/sample_flow.csv",
+                 "results/fullcohort_gls_contrasts.csv", "results/fullcohort_diagnostics.csv",
+                 "records/verification.json", "records/QC_REPORT.md",
+                 "tables/Supplementary_Tables_S22-S24_no_tools.md")
+  ),
+  task(
     "Figure-3", "Figures", "Figure_Study1_1.Rmd",
     expected = c("Figure_Study1_1.html", "figure/Figure_Study1_1.pdf",
                  "figure/Figure_Study1_1.png", "figure/Figure_Study1_1.svg")
@@ -473,12 +485,12 @@ tasks <- list(
                  "figure/Figure_Study1_2.png", "figure/Figure_Study1_2.svg")
   ),
   task(
-    "Figure-5", "Figures", "Figure_Study2_1.Rmd",
+    "Figure-5", "Figures", "Figure_Study2_1.Rmd", type = "nested_rmd",
     expected = c("Figure_Study2_1.html", "figure/Figure_Study2_1.pdf",
                  "figure/Figure_Study2_1.png", "figure/Figure_Study2_1.svg")
   ),
   task(
-    "Figure-6", "Figures", "Figure_Study2_2.Rmd",
+    "Figure-6", "Figures", "Figure_Study2_2.Rmd", type = "nested_rmd",
     expected = c("Figure_Study2_2.html", "figure/Figure_Study2_2.pdf",
                  "figure/Figure_Study2_2.png", "figure/Figure_Study2_2.svg")
   ),
@@ -530,7 +542,7 @@ static_asset_hashes <- c(
   "Figures/figure/Figure_01_Study1_Workflow.png" =
     "4b586ab1245d60d4fccbad94b39bfc320689b8735b721ce7ef503d8a6835a490",
   "Figures/figure/Figure_02_Study2_Participant_Flow_and_Procedure.pdf" =
-    "96ca2338e354c9a20230362ad3eaf1a2509441ef4388ace32cedf6d18ca8d698"
+    "e53d33cb04620a287feb361e91b9a69698be12999cf4e495b33505bd7e20dd45"
 )
 for (relative_path in names(static_asset_hashes)) {
   asset_path <- file.path(repo_root, relative_path)
@@ -564,7 +576,7 @@ run_task <- function(x) {
   # workbook that it originally created. Remove only ignored generated cache
   # directories before an R Markdown task so the freshness checks remain valid
   # on both a clean clone and a repeated local run.
-  if (identical(x$type, "rmd")) {
+  if (x$type %in% c("rmd", "nested_rmd")) {
     cache_dirs <- list.dirs(task_dir, recursive = TRUE, full.names = TRUE)
     cache_dirs <- cache_dirs[grepl("_cache$", basename(cache_dirs))]
     if (length(cache_dirs)) {
@@ -590,6 +602,31 @@ run_task <- function(x) {
   # Each notebook/script runs in a fresh R process. This prevents packages,
   # options, contrasts, and other session state loaded by an earlier task from
   # changing a later task (for example, car::recode masking dplyr::recode).
+  if (x$type %in% c("rscript", "nested_r", "nested_rmd")) {
+    # The extension and current Figures 5–6 use their separately pinned
+    # September 2026 environment in a fresh native Rscript process.
+    nested <- file.path(repo_root, "Study_2_LongTerm_Results")
+    env_names <- c("RENV_PROJECT", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE",
+                   "R_PROFILE_USER", "RENV_PATHS_LIBRARY")
+    prior <- Sys.getenv(env_names, unset = NA_character_)
+    restore_environment <- function() {
+      Sys.unsetenv(env_names)
+      present <- !is.na(prior)
+      if (any(present)) do.call(Sys.setenv, as.list(prior[present]))
+    }
+    on.exit(restore_environment(), add = TRUE)
+    Sys.unsetenv(env_names)
+    if (!identical(x$type, "rscript")) Sys.setenv(RENV_PROJECT = nested)
+    child_args <- if (x$type %in% c("rscript", "nested_r")) {
+      c("--vanilla", source_path)
+    } else {
+      c("--vanilla", file.path(nested, "render_figure.R"), source_path)
+    }
+    status <- system2(file.path(R.home("bin"), "Rscript"),
+                      vapply(child_args, shQuote, ""))
+    restore_environment()
+    if (status != 0L) stop("Nested task failed: ", x$id)
+  } else {
   callr::r(
     function(task_dir, file, type, repo_root) {
       Sys.setenv(RENV_PROJECT = repo_root)
@@ -621,6 +658,7 @@ run_task <- function(x) {
     user_profile = FALSE,
     env = c(RENV_PROJECT = repo_root)
   )
+  }
 
   missing <- x$expected[!file.exists(expected_paths)]
   if (length(missing)) {

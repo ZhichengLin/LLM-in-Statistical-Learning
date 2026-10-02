@@ -976,6 +976,49 @@ cat(&quot;===Stage===\n&quot;)</code></pre>
 ## Degrees-of-freedom method: kenward-roger 
 ## P value adjustment: tukey method for comparing a family of 3 estimates</code></pre>
 </div>
+<div id="post-hoc-between-label-comparisons-of-s1-to-s2-gains" class="section level4">
+<h4>Post hoc Between-Label Comparisons of S1-to-S2 Gains</h4>
+<p>These added comparisons were not preregistered. From the unchanged
+primary participant-intercept model, estimate S2 minus S1 within each
+label and compare all three pairs of gains. Kenward–Roger degrees of
+freedom and a single Tukey family of three comparisons are used for the
+two-sided tests and simultaneous 95% confidence intervals (alpha =
+0.05). Estimates are exported in percentage points for SI Table S7,
+Panel F.</p>
+<pre class="r"><code>stopifnot(identical(levels(performance_long$Phase),
+                    c(&quot;stage3&quot;, &quot;stage2&quot;, &quot;stage1&quot;)))
+gain_emm &lt;- emmeans(model, ~ Phase | Label, lmer.df = &quot;kenward-roger&quot;)
+gains &lt;- contrast(gain_emm, list(S2_minus_S1 = c(0, 1, -1)))
+# revpairwise preserves the pairwise family, so emmeans applies Tukey rather
+# than substituting Sidak for a general custom-contrast family.
+gain_pairs &lt;- contrast(gains, method = &quot;revpairwise&quot;, by = NULL)
+gain_summary &lt;- summary(gain_pairs, infer = c(TRUE, TRUE), adjust = &quot;tukey&quot;)
+gain_table &lt;- as.data.frame(gain_summary)
+gain_export &lt;- data.frame(
+  contrast = gain_table$contrast,
+  estimate_pp = 100 * gain_table$estimate,
+  SE_pp = 100 * gain_table$SE,
+  df = gain_table$df,
+  lower_CL_pp = 100 * gain_table$lower.CL,
+  upper_CL_pp = 100 * gain_table$upper.CL,
+  t_ratio = gain_table$t.ratio,
+  p_tukey = gain_table$p.value
+)
+stopifnot(nrow(gain_export) == 3L,
+          identical(attr(gain_summary, &quot;adjust&quot;), &quot;tukey&quot;))
+dir.create(&quot;results/H1&quot;, recursive = TRUE, showWarnings = FALSE)
+write.csv(gain_export, &quot;results/H1/H1_S2_minus_S1_Gain_Contrasts.csv&quot;,
+          row.names = FALSE)
+gain_export</code></pre>
+<pre><code>##                                   contrast estimate_pp    SE_pp   df
+## 1    S2_minus_S1 AI Human - S2_minus_S1 AI    8.934950 3.762041 1394
+## 2       S2_minus_S1 Human - S2_minus_S1 AI    7.137249 3.762041 1394
+## 3 S2_minus_S1 Human - S2_minus_S1 AI Human   -1.797701 3.778083 1394
+##   lower_CL_pp upper_CL_pp    t_ratio    p_tukey
+## 1   0.1084075   17.761493  2.3750276 0.04647448
+## 2  -1.6892937   15.963792  1.8971749 0.13984504
+## 3 -10.6618840    7.066482 -0.4758236 0.88271357</code></pre>
+</div>
 <div id="effect-sizes-for-contrasts" class="section level4">
 <h4>Effect Sizes for Contrasts</h4>
 <pre class="r"><code>cat(&quot;===Cohen&#39;s d: Stage===\n&quot;)</code></pre>
@@ -5828,7 +5871,7 @@ write.xlsx(
 <pre class="r"><code>sessionInfo()</code></pre>
 <pre><code>## R version 4.5.1 (2025-06-13)
 ## Platform: aarch64-apple-darwin20
-## Running under: macOS Tahoe 26.5.2
+## Running under: macOS Tahoe 26.6.2
 ## 
 ## Matrix products: default
 ## BLAS:   /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRblas.0.dylib 

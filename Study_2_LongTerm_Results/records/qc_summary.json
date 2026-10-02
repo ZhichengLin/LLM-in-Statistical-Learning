@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-10-03T06:53:15+09:00",
+  "verdict": "READY",
+  "scope": "deposited-data reproduction of exploratory primary33/eligible39/cohort170 analyses; source execution and private linkage not certified",
+  "blocking_rules": [],
+  "major_without_disposition": [],
+  "n_rules": 28,
+  "status_counts": {
+    "PASS": 28
+  },
+  "sample_sizes": {
+    "additional6": 6,
+    "cohort170": 170,
+    "covariate_complete": 168,
+    "eligible39": 39,
+    "eligible39_no_prior_exposure": 29,
+    "excluded_reported_use": 5,
+    "excluded_unknown": 0,
+    "lt_returns": 44,
+    "neither_followup": 85,
+    "one_month_eligible": 79,
+    "one_month_only": 46,
+    "primary33": 33,
+    "primary33_no_prior_exposure": 23,
+    "timing_eligible39": 37,
+    "timing_primary33": 32
+  }
+}

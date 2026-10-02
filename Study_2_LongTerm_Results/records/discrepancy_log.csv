@@ -1,0 +1,5 @@
+issue_id,gate,severity,status,scope,consequence,resolution
+S01,source/execution boundary,Boundary,UNKNOWN,Independent private roster linkage,No source-wide or recruitment-wide clearance; deposited-data replay remains separately scoped,Retain source qualification; not reconstructed by this public package
+S02,source/execution boundary,Boundary,UNKNOWN,Historical delivery and complete acquisition evidence,No source-wide or recruitment-wide clearance; deposited-data replay remains separately scoped,Retain source qualification; not reconstructed by this public package
+S03,source/execution boundary,Boundary,UNKNOWN,Administration/consent/ethics records,No source-wide or recruitment-wide clearance; deposited-data replay remains separately scoped,Retain source qualification; not reconstructed by this public package
+S04,source/execution boundary,Boundary,UNKNOWN,Two unmatched submissions outside the frozen snapshot,No source-wide or recruitment-wide clearance; deposited-data replay remains separately scoped,Retain source qualification; not reconstructed by this public package

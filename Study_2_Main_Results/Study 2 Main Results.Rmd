@@ -435,6 +435,43 @@ cat("\n===Label:Stage===\n")
 posthoc_label_stage$contrasts
 ```
 
+#### Post hoc Between-Label Comparisons of S1-to-S2 Gains
+
+These added comparisons were not preregistered. From the unchanged primary
+participant-intercept model, estimate S2 minus S1 within each label and compare
+all three pairs of gains. Kenward–Roger degrees of freedom and a single Tukey
+family of three comparisons are used for the two-sided tests and simultaneous
+95% confidence intervals (alpha = 0.05). Estimates are exported in percentage
+points for SI Table S7, Panel F.
+
+```{r post-hoc-s1-s2-gain-comparisons, cache=FALSE}
+stopifnot(identical(levels(performance_long$Phase),
+                    c("stage3", "stage2", "stage1")))
+gain_emm <- emmeans(model, ~ Phase | Label, lmer.df = "kenward-roger")
+gains <- contrast(gain_emm, list(S2_minus_S1 = c(0, 1, -1)))
+# revpairwise preserves the pairwise family, so emmeans applies Tukey rather
+# than substituting Sidak for a general custom-contrast family.
+gain_pairs <- contrast(gains, method = "revpairwise", by = NULL)
+gain_summary <- summary(gain_pairs, infer = c(TRUE, TRUE), adjust = "tukey")
+gain_table <- as.data.frame(gain_summary)
+gain_export <- data.frame(
+  contrast = gain_table$contrast,
+  estimate_pp = 100 * gain_table$estimate,
+  SE_pp = 100 * gain_table$SE,
+  df = gain_table$df,
+  lower_CL_pp = 100 * gain_table$lower.CL,
+  upper_CL_pp = 100 * gain_table$upper.CL,
+  t_ratio = gain_table$t.ratio,
+  p_tukey = gain_table$p.value
+)
+stopifnot(nrow(gain_export) == 3L,
+          identical(attr(gain_summary, "adjust"), "tukey"))
+dir.create("results/H1", recursive = TRUE, showWarnings = FALSE)
+write.csv(gain_export, "results/H1/H1_S2_minus_S1_Gain_Contrasts.csv",
+          row.names = FALSE)
+gain_export
+```
+
 #### Effect Sizes for Contrasts
 ```{r effect-sizes-for-contrasts-1}
 cat("===Cohen's d: Stage===\n")

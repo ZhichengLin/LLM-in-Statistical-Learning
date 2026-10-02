@@ -1,0 +1,2 @@
+"analysis","n","groups","dvs","change_basis","statistic","value","approx_F","df1","df2","p","note"
+"MLM33 Phase x Label (profile parallelism)",33,3,4,"S2-S1, S3-S1, M1-S1, LT-S1 (test invariant to full-rank basis)","Pillai",0.298920687104402,1.23006892968972,8,56,0.298978363940669,"single omnibus specified in the retrospective analysis contract before model fitting; includes initial-session label differences; not evidence of parallelism if nonsignificant"
