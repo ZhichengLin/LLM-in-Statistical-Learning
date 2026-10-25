@@ -29,6 +29,10 @@ Repository: [anonymous review copy](https://anonymous.4open.science/r/statistica
 Author metadata and contact identifiers are anonymized for review; scientific
 data and analysis code are unchanged.
 
+## Anonymous preregistration review copy
+
+The [Study 1 preregistration review copy](Preregistrations/Study_1_Preregistration_Anonymous.md) preserves the original registration date and response wording, with one author name withheld for anonymous review. It is a derived copy, not a new registration; the original OSF record remains unchanged.
+
 ## What this repository reproduces
 
 The current mapping uses `Main v2.docx` and `SI v2.docx`, verified on 2026-10-03.
