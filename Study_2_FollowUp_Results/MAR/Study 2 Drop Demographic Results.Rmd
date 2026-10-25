@@ -1,6 +1,6 @@
 ---
 title: "Study 2 — Dropout vs. Completer: Demographic Comparison"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2025-07-14"
 output: html_document
 ---

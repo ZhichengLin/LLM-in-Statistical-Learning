@@ -1,6 +1,6 @@
 ---
 title: "Study 2 — Early- vs. Late-Corrected Items at Follow-Up"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2025-08-22"
 output: html_document
 ---

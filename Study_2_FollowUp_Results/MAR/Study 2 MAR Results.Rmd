@@ -1,6 +1,6 @@
 ---
 title: "Study 2 — Full Sample (MAR) Analyses"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2025-10-13"
 output: html_document
 ---

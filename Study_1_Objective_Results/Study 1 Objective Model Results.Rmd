@@ -1,6 +1,6 @@
 ---
 title: "Study 1 — Objective Benchmark: Thinking-Mode Mixed Models"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2026-01-16"
 output: html_document
 ---

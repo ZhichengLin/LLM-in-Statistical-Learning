@@ -1,6 +1,6 @@
 ---
 title: "Figure S1"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2026-08-22"
 output: html_document
 ---

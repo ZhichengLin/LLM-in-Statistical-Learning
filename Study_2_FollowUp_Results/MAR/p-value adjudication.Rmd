@@ -1,6 +1,6 @@
 ---
 title: "Adjust P (MAR) — Moderation Multiple-Comparison Correction"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2026-05-17"
 output: html_document
 ---

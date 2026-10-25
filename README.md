@@ -18,13 +18,16 @@ the long-term within-person change, without an untrained control and with
 substantial attrition, does not establish a causal effect of instruction or a
 sustained causal advantage of any label.
 
-Preregistrations: Study 1 [osf.io/5jwtk](https://osf.io/5jwtk/overview) and
-Study 2 [osf.io/daphw](https://osf.io/daphw/overview). The 14-month analyses
+Preregistrations: Study 1 [withheld for anonymous review] and
+Study 2 [withheld for anonymous review]. The 14-month analyses
 were not preregistered. Selection of the both-follow-up primary sample and
 mandatory exclusion for reported external assistance followed initial
 long-term results.
 
-Repository: [github.com/ZhichengLin/LLM-in-Statistical-Learning](https://github.com/ZhichengLin/LLM-in-Statistical-Learning)
+Repository: [anonymous review copy](https://anonymous.4open.science/r/statistical-learning-6703/)
+
+Author metadata and contact identifiers are anonymized for review; scientific
+data and analysis code are unchanged.
 
 ## What this repository reproduces
 
@@ -96,11 +99,9 @@ Requirements:
 - macOS Quartz and Helvetica for exact reproduction of the current Figure 5/6
   PDFs; the other figure sources use their recorded graphics devices
 
-From a directory where you want a clean clone, run:
+Open the [anonymous repository](https://anonymous.4open.science/r/statistical-learning-6703/), choose **Download ZIP**, and extract the archive. From the extracted repository root, run:
 
 ```sh
-git clone https://github.com/ZhichengLin/LLM-in-Statistical-Learning.git
-cd LLM-in-Statistical-Learning
 shasum -a 256 -c SHA256SUMS
 Rscript -e 'renv::restore(project = ".", library = renv::paths$library(project = "."), prompt = FALSE)'
 Rscript -e 'renv::restore(project = "Study_2_LongTerm_Results", library = renv::paths$library(project = "Study_2_LongTerm_Results"), prompt = FALSE)'

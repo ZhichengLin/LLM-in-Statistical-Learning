@@ -1,6 +1,6 @@
 ---
 title: "Adjust P (Main) — Moderation Multiple-Comparison Correction"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2026-06-03"
 output: html_document
 ---

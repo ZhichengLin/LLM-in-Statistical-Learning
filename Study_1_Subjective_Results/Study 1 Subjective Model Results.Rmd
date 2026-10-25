@@ -1,6 +1,6 @@
 ---
 title: "Study 1 — Subjective Ratings: Mixed Models"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2025-04-25"
 output:
   cleanrmd::html_document_clean:

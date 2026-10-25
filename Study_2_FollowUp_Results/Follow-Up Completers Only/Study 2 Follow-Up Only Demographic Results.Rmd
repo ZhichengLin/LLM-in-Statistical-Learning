@@ -1,6 +1,6 @@
 ---
 title: "Study 2 — Follow-Up (Completer) Sample: Demographic Characteristics"
-author: "Siyuan Huang"
+author: "Anonymous authors"
 date: "2025-07-14"
 output: html_document
 ---
